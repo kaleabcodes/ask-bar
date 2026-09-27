@@ -1,7 +1,11 @@
 /* Ask Bar */
 
 .ab-backdrop {
-  background-color: rgba(0, 0, 0, 0.12);
+  background-color: transparent;
+}
+
+.ab-backdrop-dim {
+  background-color: rgba(0, 0, 0, 0.25);
 }
 
 .ab-panel {
@@ -120,4 +124,15 @@
 
 .ab-dim {
   color: rgba(255, 255, 255, 0.35);
+}
+
+/* ── Compact mode ─────────────────────────────────────── */
+
+.ab-compact .ab-row {
+  padding: 4px 12px;
+  border-radius: 10px;
+}
+
+.ab-compact .ab-row-title {
+  font-size: 10.5pt;
 }

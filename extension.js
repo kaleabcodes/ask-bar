@@ -9,14 +9,13 @@ import {AppsProvider} from './providers/apps.js';
 import {CalculatorProvider} from './providers/calculator.js';
 import {CommandsProvider} from './providers/commands.js';
 import {FilesProvider} from './providers/files.js';
+import {WebProvider} from './providers/web.js';
 import {WindowsProvider} from './providers/windows.js';
 import {AskBar} from './ui/bar.js';
 
-// Modes that are planned but not built yet, shown as a hint row.
-const COMING_SOON = {
-    [MODES.WEB]: ['Web search', 'web-browser-symbolic'],
-    [MODES.AI]: ['Ask AI', 'starred-symbolic'],
-};
+// In the default search, results scoring under this fraction of the best
+// result are dropped as noise.
+const RELATIVE_CUTOFF = 0.35;
 
 export default class AskBarExtension extends Extension {
     enable() {
@@ -24,13 +23,15 @@ export default class AskBarExtension extends Extension {
         this._apps = new AppsProvider();
         this._windows = new WindowsProvider();
         this._calculator = new CalculatorProvider();
-        this._files = new FilesProvider();
+        this._files = new FilesProvider(this._settings);
+        this._web = new WebProvider(this._settings);
         this._commands = new CommandsProvider({
             settings: this._settings,
             openPreferences: () => this.openPreferences(),
         });
 
         this._bar = new AskBar({
+            settings: this._settings,
             search: (parsed, cancellable) => this._search(parsed, cancellable),
             onOpen: () => this._files.prefetch(),
         });
@@ -49,47 +50,82 @@ export default class AskBarExtension extends Extension {
         this._bar.close();
         this._bar.destroy();
         this._bar = null;
-        for (const provider of [this._apps, this._windows, this._calculator, this._files, this._commands])
+        for (const provider of this._providers())
             provider.destroy();
-        this._apps = this._windows = this._calculator = this._files = this._commands = null;
+        this._apps = this._windows = this._calculator = this._files = this._web = this._commands = null;
         this._settings = null;
     }
 
+    _providers() {
+        return [this._apps, this._windows, this._calculator, this._files, this._web, this._commands];
+    }
+
     /**
-     * @returns {Result[] | Promise<Result[]>} sync for instant sources; a
-     *     Promise for file search
+     * @returns {Result[] | Promise<Result[]> | {results: Result[], more: Promise<Result[]>}}
+     *     sync for instant sources, a Promise for file search, or both for
+     *     the default mode (instant results, then with files added)
      */
     _search({mode, query}, cancellable) {
         const limit = this._settings.get_int('max-results');
         const top = results => results.sort((a, b) => b.score - a.score).slice(0, limit);
 
-        if (mode === MODES.FILES)
+        switch (mode) {
+        case MODES.FILES:
             return this._files.search(query, cancellable).then(top);
-        if (mode === MODES.COMMANDS)
+        case MODES.COMMANDS:
             // Scores only order matches; keep the provider's order when empty.
             return this._commands.search(query).then(r => (query ? top(r) : r));
-
-        if (COMING_SOON[mode]) {
-            const [name, icon] = COMING_SOON[mode];
-            return [{
-                id: `soon:${mode}`,
-                title: `${name} is coming soon`,
-                subtitle: 'For now, type without a prefix to search apps and windows',
-                kind: '',
-                score: 0,
-                createIcon: () => new St.Icon({icon_name: icon, icon_size: 32}),
-                activate: null,
-            }];
+        case MODES.WEB:
+            return this._web.search(query).slice(0, limit);
+        case MODES.MATH:
+            return this._calculator.search(query, {forced: true});
+        case MODES.AI:
+            return [comingSoon('Ask AI', 'starred-symbolic')];
         }
 
-        if (mode === MODES.MATH)
-            return this._calculator.search(query, {forced: true});
+        // Default mode: every enabled source ranked together; the web search
+        // fallback always stays last.
+        const on = key => this._settings.get_boolean(key);
+        const web = this._web.fallback(query);
+        const instant = [
+            ...(on('search-calculator') ? this._calculator.search(query) : []),
+            ...(on('search-apps') ? this._apps.search(query) : []),
+            ...(on('search-windows') ? this._windows.search(query) : []),
+            ...(on('search-commands') ? this._commands.searchQuick(query) : []),
+            ...web.filter(r => r.score > 0),
+        ];
+        const fallback = web.filter(r => r.score <= 0);
+        // With a query, drop matches far weaker than the best one (e.g. an
+        // app whose description happens to contain the letters of "readme").
+        const rank = results => {
+            const sorted = results.sort((a, b) => b.score - a.score);
+            const best = sorted[0]?.score ?? 0;
+            return (query ? sorted.filter(r => r.score >= best * RELATIVE_CUTOFF) : sorted).slice(0, limit);
+        };
+        const rankWithFallback = results => {
+            const ranked = rank(results);
+            return [...ranked.slice(0, Math.max(0, limit - fallback.length)), ...fallback];
+        };
 
-        return top([
-            ...this._calculator.search(query),
-            ...this._apps.search(query),
-            ...this._windows.search(query),
-            ...this._commands.searchQuick(query),
-        ]);
+        if (!query || !on('search-files'))
+            return rankWithFallback(instant);
+
+        // Files are slower: show the instant results first, then re-rank
+        // with the file matches when they arrive.
+        const more = this._files.searchTop(query, cancellable, this._settings.get_int('default-file-results'))
+            .then(files => rankWithFallback([...instant, ...files]));
+        return {results: rankWithFallback([...instant]), more};
     }
+}
+
+function comingSoon(name, icon) {
+    return {
+        id: `soon:${name}`,
+        title: `${name} is coming soon`,
+        subtitle: 'For now, type without a prefix to search apps, files and commands',
+        kind: '',
+        score: 0,
+        createIcon: () => new St.Icon({icon_name: icon, icon_size: 32}),
+        activate: null,
+    };
 }

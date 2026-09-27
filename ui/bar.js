@@ -15,8 +15,6 @@ import {MODES, parse} from '../core/parse.js';
 import {isCancelled} from '../lib/async.js';
 import {ResultRow} from './resultRow.js';
 
-const PANEL_WIDTH = 680;
-const TOP_FRACTION = 0.18; // panel's top edge, as a fraction of the monitor height
 const ANIMATION_MS = 120;
 
 const MODE_INFO = {
@@ -32,13 +30,15 @@ export const AskBar = GObject.registerClass(
 class AskBar extends St.Widget {
     /**
      * @param {object} params
+     * @param {Gio.Settings} params.settings
      * @param {(parsed: ReturnType<typeof parse>, cancellable: Gio.Cancellable) =>
-     *     Result[] | Promise<Result[]>} params.search
-     *     Sync for instant sources, a Promise for slow ones (files); the
+     *     Result[] | Promise<Result[]> | {results: Result[], more: Promise<Result[]>}} params.search
+     *     Sync for instant sources, a Promise for slow ones (files), or
+     *     both: `results` now, then `more` replaces them when ready. The
      *     cancellable is cancelled as soon as the query changes.
      * @param {() => void} [params.onOpen]  e.g. to warm caches
      */
-    _init({search, onOpen = () => {}}) {
+    _init({settings, search, onOpen = () => {}}) {
         super._init({
             style_class: 'ab-backdrop',
             reactive: true,
@@ -48,11 +48,14 @@ class AskBar extends St.Widget {
             source: global.stage,
             coordinate: Clutter.BindCoordinate.ALL,
         }));
+        this._settings = settings;
         this._search = search;
         this._onOpen = onOpen;
+        this._lastQuery = '';
         this._grab = null;
         this._cancellable = null;   // for the in-flight async search
         this._generation = 0;       // ignores results of superseded searches
+        this._userSelected = false; // true once you move the selection yourself
         this._resultsMode = null;
         this._results = [];
         this._rows = [];
@@ -97,6 +100,11 @@ class AskBar extends St.Widget {
         this._altHint = new St.BoxLayout({visible: false});
         this._altHintLabel = addHint(this._altHint, 'Ctrl+Enter', '');
         footer.add_child(this._altHint);
+        // Shown when Tab completes the selected result (e.g. "!gh ").
+        this._fillHint = new St.BoxLayout({visible: false});
+        addHint(this._fillHint, 'Tab', 'Complete');
+        footer.add_child(this._fillHint);
+        this._footer = footer;
         this._panel.add_child(footer);
 
         this._entry.clutter_text.connect('text-changed', () => this._update());
@@ -121,14 +129,23 @@ class AskBar extends St.Widget {
         this._grab = Main.pushModal(this, {actionMode: Shell.ActionMode.POPUP});
 
         this.get_parent()?.set_child_above_sibling(this, null);
+        this._applyAppearance();
         this._placePanel();
         this._onOpen();
-        this._entry.text = '';
+        const remember = this._settings.get_boolean('remember-query');
+        this._entry.text = remember ? this._lastQuery : '';
         this._update();
         this.show();
         this._entry.grab_key_focus();
+        if (remember)
+            this._entry.clutter_text.set_selection(0, -1); // typing replaces it
 
         this._panel.remove_all_transitions();
+        if (!this._settings.get_boolean('animations')) {
+            this._panel.opacity = 255;
+            this._panel.scale_x = this._panel.scale_y = 1;
+            return;
+        }
         this._panel.opacity = 0;
         this._panel.scale_x = this._panel.scale_y = 0.97;
         this._panel.ease({
@@ -140,29 +157,41 @@ class AskBar extends St.Widget {
         });
     }
 
+    _applyAppearance() {
+        const toggle = (actor, name, on) => (on ? actor.add_style_class_name(name) : actor.remove_style_class_name(name));
+        toggle(this, 'ab-backdrop-dim', this._settings.get_boolean('dim-background'));
+        toggle(this._panel, 'ab-compact', this._settings.get_boolean('compact-mode'));
+        this._footer.visible = this._settings.get_boolean('show-footer');
+    }
+
     close() {
         if (!this.isOpen)
             return;
         Main.popModal(this._grab);
         this._grab = null;
+        this._lastQuery = this._entry.text;
         this._cancelSearch();
         this.hide();
         this._setResults([], null);
     }
 
-    // Centered horizontally on the monitor with the pointer, near the top.
+    // Centered horizontally, `panel-position` percent from the top of the
+    // monitor with the pointer (or the primary one).
     _placePanel() {
-        const monitor = Main.layoutManager.currentMonitor;
+        const monitor = this._settings.get_string('open-on-monitor') === 'primary'
+            ? Main.layoutManager.primaryMonitor
+            : Main.layoutManager.currentMonitor;
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
-        const width = Math.min(PANEL_WIDTH * scale, monitor.width * 0.9);
+        const width = Math.min(this._settings.get_int('panel-width') * scale, monitor.width * 0.9);
         this._panel.width = width;
         this._panel.set_pivot_point(0.5, 0);
         this._panel.set_position(
             Math.round(monitor.x + (monitor.width - width) / 2),
-            Math.round(monitor.y + monitor.height * TOP_FRACTION));
+            Math.round(monitor.y + monitor.height * this._settings.get_int('panel-position') / 100));
     }
 
     _update() {
+        this._userSelected = false;
         const parsed = parse(this._entry.text);
         const info = MODE_INFO[parsed.mode];
         this._modeIcon.icon_name = info.icon;
@@ -173,6 +202,18 @@ class AskBar extends St.Widget {
         const generation = ++this._generation;
         this._cancellable = new Gio.Cancellable();
         const results = this._search(parsed, this._cancellable);
+        if (results?.more instanceof Promise) {
+            // Instant results now; the complete list replaces them when ready.
+            this._setResults(results.results, parsed.mode);
+            results.more.then(full => {
+                if (generation === this._generation)
+                    this._setResults(full, parsed.mode);
+            }).catch(e => {
+                if (!isCancelled(e))
+                    console.warn(`[ask-bar] search failed: ${e.message}`);
+            });
+            return;
+        }
         if (!(results instanceof Promise)) {
             this._setResults(results, parsed.mode);
             return;
@@ -198,15 +239,19 @@ class AskBar extends St.Widget {
 
     _setResults(results, mode) {
         this._resultsMode = mode;
-        // Keep the same result selected when the list updates while typing.
-        const selectedId = this._results[this._selected]?.id;
+        // When results update (e.g. file matches arrive), keep a selection you
+        // moved yourself; otherwise select the new best result.
+        const selectedId = this._userSelected ? this._results[this._selected]?.id : null;
         this._results = results;
         this._list.destroy_all_children();
+        const compact = this._settings.get_boolean('compact-mode');
         this._rows = results.map((result, index) => {
-            const row = new ResultRow(result);
+            const row = new ResultRow(result, {compact});
             row.connect('notify::hover', () => {
-                if (row.hover)
+                if (row.hover) {
+                    this._userSelected = true;
                     this._select(index, false);
+                }
             });
             row.connect('clicked', () => this._activate(index));
             this._list.add_child(row);
@@ -230,13 +275,18 @@ class AskBar extends St.Widget {
         if (scroll)
             ensureActorVisibleInScrollView(this._scroll, row);
 
-        const altLabel = this._results[this._selected]?.altLabel;
-        this._altHint.visible = Boolean(altLabel);
-        this._altHintLabel.text = altLabel ?? '';
+        const result = this._results[this._selected];
+        this._altHint.visible = Boolean(result?.altLabel);
+        this._altHintLabel.text = result?.altLabel ?? '';
+        this._fillHint.visible = Boolean(result?.fill);
     }
 
     _activate(index, alternate = false) {
         const result = this._results[index];
+        if (result?.fill && !alternate) {
+            this._fill(result.fill);
+            return;
+        }
         const action = alternate ? result?.altActivate : result?.activate;
         if (!action)
             return;
@@ -245,15 +295,29 @@ class AskBar extends St.Widget {
         action();
     }
 
+    // Puts text in the bar and keeps it open, e.g. "!gh " from a shortcut.
+    _fill(text) {
+        this._entry.text = text;
+        this._entry.clutter_text.set_cursor_position(-1);
+    }
+
     _onKeyPress(event) {
         switch (event.get_key_symbol()) {
+        case Clutter.KEY_Tab: {
+            const fill = this._results[this._selected]?.fill;
+            if (fill)
+                this._fill(fill);
+            return Clutter.EVENT_STOP; // never move focus out of the entry
+        }
         case Clutter.KEY_Escape:
             this.close();
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Down:
+            this._userSelected = true;
             this._select(this._selected + 1);
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Up:
+            this._userSelected = true;
             this._select(this._selected - 1);
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Return:

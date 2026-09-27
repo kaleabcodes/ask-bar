@@ -2,6 +2,8 @@
 <schemalist>
   <schema id="org.gnome.shell.extensions.ask-bar"
           path="/org/gnome/shell/extensions/ask-bar/">
+
+    <!-- General -->
     <key name="toggle-shortcut" type="as">
       <default><![CDATA[['<Alt>space']]]></default>
       <summary>Open Ask Bar</summary>
@@ -13,10 +15,127 @@
       <summary>Maximum results</summary>
       <description>How many results the bar shows at most.</description>
     </key>
+    <key name="open-on-monitor" type="s">
+      <choices>
+        <choice value="pointer"/>
+        <choice value="primary"/>
+      </choices>
+      <default>'pointer'</default>
+      <summary>Monitor</summary>
+      <description>Open on the monitor with the pointer, or always on the primary monitor.</description>
+    </key>
+    <key name="remember-query" type="b">
+      <default>false</default>
+      <summary>Remember last search</summary>
+      <description>Reopen with the previous search text, selected so typing replaces it.</description>
+    </key>
+
+    <!-- Search sources (default mode, without a prefix) -->
+    <key name="search-apps" type="b">
+      <default>true</default>
+      <summary>Search apps</summary>
+      <description>Include applications in the default search.</description>
+    </key>
+    <key name="search-windows" type="b">
+      <default>true</default>
+      <summary>Search open windows</summary>
+      <description>Include open windows in the default search.</description>
+    </key>
+    <key name="search-calculator" type="b">
+      <default>true</default>
+      <summary>Calculator</summary>
+      <description>Answer math expressions in the default search.</description>
+    </key>
+    <key name="search-commands" type="b">
+      <default>true</default>
+      <summary>Search commands</summary>
+      <description>Include system and custom commands in the default search.</description>
+    </key>
+    <key name="search-files" type="b">
+      <default>true</default>
+      <summary>Search files</summary>
+      <description>Include the best file and project matches in the default search.</description>
+    </key>
+    <key name="default-file-results" type="i">
+      <range min="1" max="10"/>
+      <default>3</default>
+      <summary>File results in the default search</summary>
+      <description>How many file results to add to the default search.</description>
+    </key>
+    <key name="web-fallback" type="b">
+      <default>true</default>
+      <summary>Offer a web search</summary>
+      <description>End the default search with "Search the web for …", and open typed URLs.</description>
+    </key>
+    <key name="default-search-engine" type="s">
+      <default>'g'</default>
+      <summary>Default search engine</summary>
+      <description>Key of the web shortcut used for the web search fallback (e.g. g, ddg).</description>
+    </key>
+
+    <!-- Files -->
+    <key name="recent-files-count" type="i">
+      <range min="0" max="30"/>
+      <default>10</default>
+      <summary>Recent files</summary>
+      <description>How many recent files a bare "@" shows.</description>
+    </key>
+    <key name="index-projects" type="b">
+      <default>true</default>
+      <summary>Find git projects</summary>
+      <description>Scan the home folder for git repositories, which GNOME's file index skips.</description>
+    </key>
+    <key name="project-scan-depth" type="i">
+      <range min="2" max="10"/>
+      <default>6</default>
+      <summary>Project scan depth</summary>
+      <description>How many folder levels below home to look for git repositories.</description>
+    </key>
+
+    <!-- Appearance -->
+    <key name="panel-width" type="i">
+      <range min="480" max="1200"/>
+      <default>680</default>
+      <summary>Width</summary>
+      <description>Width of the bar in pixels.</description>
+    </key>
+    <key name="panel-position" type="i">
+      <range min="5" max="50"/>
+      <default>18</default>
+      <summary>Vertical position</summary>
+      <description>Distance of the bar from the top of the screen, in percent of its height.</description>
+    </key>
+    <key name="dim-background" type="b">
+      <default>true</default>
+      <summary>Dim the background</summary>
+      <description>Darken the rest of the screen while the bar is open.</description>
+    </key>
+    <key name="compact-mode" type="b">
+      <default>false</default>
+      <summary>Compact results</summary>
+      <description>Smaller rows without descriptions.</description>
+    </key>
+    <key name="show-footer" type="b">
+      <default>true</default>
+      <summary>Show key hints</summary>
+      <description>Show keyboard hints at the bottom of the bar.</description>
+    </key>
+    <key name="animations" type="b">
+      <default>true</default>
+      <summary>Animations</summary>
+      <description>Animate the bar when it opens.</description>
+    </key>
+
+    <!-- Custom lists (JSON) -->
     <key name="custom-commands" type="s">
       <default>'[]'</default>
       <summary>Custom commands</summary>
       <description>JSON list of {"name": "...", "command": "..."} run with sh -c from the "/" mode.</description>
+    </key>
+    <key name="custom-web-shortcuts" type="s">
+      <default>'[]'</default>
+      <summary>Custom web shortcuts</summary>
+      <description>JSON list of {"key": "...", "name": "...", "url": "...%s..."} used with "!key".</description>
     </key>
   </schema>
 </schemalist>

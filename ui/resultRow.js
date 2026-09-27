@@ -5,10 +5,15 @@ import GObject from 'gi://GObject';
 import Pango from 'gi://Pango';
 import St from 'gi://St';
 
+const COMPACT_ICON_SIZE = 22;
+
 export const ResultRow = GObject.registerClass(
 class ResultRow extends St.Button {
-    /** @param {import('../providers/types.js').Result} result */
-    _init(result) {
+    /**
+     * @param {import('../providers/types.js').Result} result
+     * @param {{compact?: boolean}} [options]  compact: smaller icon, no subtitle
+     */
+    _init(result, {compact = false} = {}) {
         super._init({
             style_class: 'ab-row',
             track_hover: true,
@@ -19,6 +24,8 @@ class ResultRow extends St.Button {
         const box = new St.BoxLayout({style_class: 'ab-row-box', x_expand: true});
         const icon = result.createIcon();
         icon.y_align = Clutter.ActorAlign.CENTER;
+        if (compact && 'icon_size' in icon)
+            icon.icon_size = COMPACT_ICON_SIZE;
         box.add_child(icon);
 
         const text = new St.BoxLayout({
@@ -29,7 +36,7 @@ class ResultRow extends St.Button {
         const title = new St.Label({text: result.title, style_class: 'ab-row-title'});
         title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         text.add_child(title);
-        if (result.subtitle) {
+        if (result.subtitle && !compact) {
             const subtitle = new St.Label({text: result.subtitle, style_class: 'ab-row-subtitle'});
             subtitle.clutter_text.ellipsize = Pango.EllipsizeMode.END;
             text.add_child(subtitle);

@@ -17,16 +17,20 @@ import {isCancelled, readFile, run, sleep} from '../lib/async.js';
 
 const DEBOUNCE_MS = 80;           // wait for a pause in typing before searching
 const INDEX_LIMIT = 80;           // fetch plenty; our ranking picks the best
-const RECENT_LIMIT = 10;
 const PROJECT_SCAN_EVERY_MS = 10 * 60 * 1000;
-const PROJECT_SCAN_DEPTH = 6;
 const ICON_SIZE = 32;
+// In the default search, only clear name matches are worth showing next to
+// apps (fuzzy scatter matches would be noise). Substring matches score 100+.
+const DEFAULT_MODE_MIN_SCORE = 90;
+const DEFAULT_MODE_MIN_QUERY = 3;
 
 // Big folders that never contain your projects; skipping them keeps the scan fast.
 const SCAN_SKIP = ['node_modules', 'snap', 'Android', 'go', 'venv', 'flatpak'];
 
 export class FilesProvider {
-    constructor() {
+    /** @param {Gio.Settings} settings */
+    constructor(settings) {
+        this._settings = settings;
         this._home = GLib.get_home_dir();
         this._projects = [];         // paths of git repositories
         this._projectsScannedAt = 0;
@@ -36,8 +40,30 @@ export class FilesProvider {
 
     // Called when the bar opens, so projects are fresh by the time you type.
     prefetch() {
+        if (!this._settings.get_boolean('index-projects')) {
+            this._projects = [];
+            return;
+        }
         if (!this._scanning && Date.now() - this._projectsScannedAt > PROJECT_SCAN_EVERY_MS)
             this._scanProjects();
+    }
+
+    /**
+     * The few best file matches, for the default (no prefix) search.
+     *
+     * @param {string} query
+     * @param {Gio.Cancellable} cancellable
+     * @param {number} limit
+     * @returns {Promise<import('./types.js').Result[]>}
+     */
+    async searchTop(query, cancellable, limit) {
+        if (query.length < DEFAULT_MODE_MIN_QUERY)
+            return [];
+        const results = await this.search(query, cancellable);
+        return results
+            .filter(r => r.score >= DEFAULT_MODE_MIN_SCORE)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit);
     }
 
     /**
@@ -56,11 +82,12 @@ export class FilesProvider {
             this._index(['-s', ...words], cancellable),
         ]);
         const folderSet = new Set(folders);
-        const projectSet = new Set(this._projects);
+        const projects = this._settings.get_boolean('index-projects') ? this._projects : [];
+        const projectSet = new Set(projects);
 
         const seen = new Set();
         const results = [];
-        for (const path of [...this._projects, ...folders, ...files]) {
+        for (const path of [...projects, ...folders, ...files]) {
             if (seen.has(path))
                 continue;
             seen.add(path);
@@ -88,9 +115,10 @@ export class FilesProvider {
         if (!xml)
             return [];
         // Check existence only until we have enough (each check hits the disk).
+        const limit = this._settings.get_int('recent-files-count');
         const existing = [];
         for (const path of parseRecentFiles(xml)) {
-            if (existing.length === RECENT_LIMIT)
+            if (existing.length >= limit)
                 break;
             if (GLib.file_test(path, GLib.FileTest.EXISTS))
                 existing.push(path);
@@ -109,7 +137,7 @@ export class FilesProvider {
         const prune = SCAN_SKIP.flatMap(name => ['-o', '-name', name]);
         try {
             const out = await run([
-                'find', this._home, '-maxdepth', `${PROJECT_SCAN_DEPTH}`,
+                'find', this._home, '-maxdepth', `${this._settings.get_int('project-scan-depth')}`,
                 '-name', '.git', '-print', '-prune',
                 '-o', '(', '-name', '.*', ...prune, ')', '-prune',
             ], this._cancellable);
