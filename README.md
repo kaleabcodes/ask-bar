@@ -21,13 +21,38 @@ Press **Alt+Space**, start typing, hit Enter.
   GNOME's file index, plus your **git projects** (which GNOME doesn't
   index). A bare `@` lists recent files. Enter opens, **Ctrl+Enter** shows
   the item in Files. Search by path too: `@repo/dock`
+- **Commands (`/`)**: system actions and developer tools, plus your own
+  shell commands (see below). Common actions also work without the `/`:
+  type `lock` and press Enter
 - **Keyboard first**: ↑↓ to move, Enter to open, Esc to close
+
+### Commands
+
+| Command | Does |
+| --- | --- |
+| `/lock` `/suspend` `/logout` `/restart` `/shutdown` | Session actions (log out, restart and power off ask for confirmation) |
+| `/dark` `/nightlight` `/dnd` | Toggle dark mode, Night Light, Do Not Disturb |
+| `/screenshot` `/settings` `/askbar` | Screenshot tool, GNOME Settings, Ask Bar settings |
+| `/json` `/jsonmin` | Format or minify JSON |
+| `/jwt` | Decode a JWT and show when it expires |
+| `/b64` `/b64d` `/url` `/urld` | Base64 and URL encode/decode |
+| `/ts` | Unix timestamp ⇄ date (no input: the current time) |
+| `/uuid` `/password` | Generate a UUID v4 or a strong password |
+| `/sha256` `/sha1` `/md5` | Hash text |
+| `/camel` `/snake` `/kebab` `/pascal` `/constant` `/title` `/upper` `/lower` | Change case |
+| `/count` | Count characters, words and lines |
+
+Developer tools work on the text you type after the command (`/b64 hello`)
+or, if you type nothing, on the **clipboard**. The result is previewed as
+you type, and Enter copies it.
+
+**Your own commands**: add them in the settings (name + shell command) and
+run them with `/name`.
 
 ### Coming next
 
 | Prefix | Mode |
 | --- | --- |
-| `/` | Commands (lock, dark mode, developer tools…) |
 | `!` | Web search shortcuts (`!gh`, `!yt`…) |
 | `?` | Ask AI, with `@files` as context |
 

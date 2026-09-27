@@ -13,5 +13,10 @@
       <summary>Maximum results</summary>
       <description>How many results the bar shows at most.</description>
     </key>
+    <key name="custom-commands" type="s">
+      <default>'[]'</default>
+      <summary>Custom commands</summary>
+      <description>JSON list of {"name": "...", "command": "..."} run with sh -c from the "/" mode.</description>
+    </key>
   </schema>
 </schemalist>

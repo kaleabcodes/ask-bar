@@ -7,13 +7,13 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {MODES} from './core/parse.js';
 import {AppsProvider} from './providers/apps.js';
 import {CalculatorProvider} from './providers/calculator.js';
+import {CommandsProvider} from './providers/commands.js';
 import {FilesProvider} from './providers/files.js';
 import {WindowsProvider} from './providers/windows.js';
 import {AskBar} from './ui/bar.js';
 
 // Modes that are planned but not built yet, shown as a hint row.
 const COMING_SOON = {
-    [MODES.COMMANDS]: ['Commands', 'utilities-terminal-symbolic'],
     [MODES.WEB]: ['Web search', 'web-browser-symbolic'],
     [MODES.AI]: ['Ask AI', 'starred-symbolic'],
 };
@@ -25,6 +25,10 @@ export default class AskBarExtension extends Extension {
         this._windows = new WindowsProvider();
         this._calculator = new CalculatorProvider();
         this._files = new FilesProvider();
+        this._commands = new CommandsProvider({
+            settings: this._settings,
+            openPreferences: () => this.openPreferences(),
+        });
 
         this._bar = new AskBar({
             search: (parsed, cancellable) => this._search(parsed, cancellable),
@@ -45,9 +49,9 @@ export default class AskBarExtension extends Extension {
         this._bar.close();
         this._bar.destroy();
         this._bar = null;
-        for (const provider of [this._apps, this._windows, this._calculator, this._files])
+        for (const provider of [this._apps, this._windows, this._calculator, this._files, this._commands])
             provider.destroy();
-        this._apps = this._windows = this._calculator = this._files = null;
+        this._apps = this._windows = this._calculator = this._files = this._commands = null;
         this._settings = null;
     }
 
@@ -61,6 +65,9 @@ export default class AskBarExtension extends Extension {
 
         if (mode === MODES.FILES)
             return this._files.search(query, cancellable).then(top);
+        if (mode === MODES.COMMANDS)
+            // Scores only order matches; keep the provider's order when empty.
+            return this._commands.search(query).then(r => (query ? top(r) : r));
 
         if (COMING_SOON[mode]) {
             const [name, icon] = COMING_SOON[mode];
@@ -82,6 +89,7 @@ export default class AskBarExtension extends Extension {
             ...this._calculator.search(query),
             ...this._apps.search(query),
             ...this._windows.search(query),
+            ...this._commands.searchQuick(query),
         ]);
     }
 }
