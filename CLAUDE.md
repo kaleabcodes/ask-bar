@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Ask Bar: a Spotlight/Raycast-style launcher as a GNOME Shell extension (GJS, ES modules, GNOME Shell 48–50, developed on 50 / Wayland). UUID `ask-bar@kaleabcodes.dev`, schema `org.gnome.shell.extensions.ask-bar`, default shortcut **Alt+Space**. Super+Space is avoided because it switches input sources, and Ctrl+Space because it's code completion in IDEs. Sibling project: `../dock-hover-preview`; its CLAUDE.md documents the headless-shell testing technique used here.
 
-Roadmap (steps 1–3 are done: launcher, `@` files, `/` commands): 4) `?` / Tab Ask AI (Claude API and/or Ollama, streamed, with `@file` context, API key in the GNOME keyring); 5) `!` web shortcuts, polish, publishing. It was built as an extension rather than an app on purpose: only the shell can show a reliable overlay and global shortcut on Wayland.
+Roadmap: steps 1–3 are done (launcher, `@` files, `/` commands). Next is `!` web shortcuts, polish and publishing. **Ask AI (`?`) is deliberately deferred** by the owner: `?` shows a "coming soon" row; don't implement AI unless asked. When it's picked up, the plan is Claude API and/or Ollama behind a setting, streamed, with `@file` context and the API key in the GNOME keyring. GJS has no Anthropic SDK, so it would be raw HTTP to `/v1/messages`. It was built as an extension rather than an app on purpose: only the shell can show a reliable overlay and global shortcut on Wayland.
 
 ## Commands
 
