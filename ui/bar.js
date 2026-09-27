@@ -160,6 +160,11 @@ class AskBar extends St.Widget {
     _applyAppearance() {
         const toggle = (actor, name, on) => (on ? actor.add_style_class_name(name) : actor.remove_style_class_name(name));
         toggle(this, 'ab-backdrop-dim', this._settings.get_boolean('dim-background'));
+        // Light colors follow the shell's style, checked on every open (see
+        // the note at the top of stylesheet.css).
+        const light = Main.getStyleVariant() === 'light';
+        toggle(this, 'ab-light', light);
+        toggle(this._panel, 'ab-light', light);
         toggle(this._panel, 'ab-compact', this._settings.get_boolean('compact-mode'));
         this._footer.visible = this._settings.get_boolean('show-footer');
     }

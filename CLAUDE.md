@@ -39,7 +39,7 @@ for f in *.js core/*.js providers/*.js ui/*.js; do cp "$f" /tmp/x.mjs && node --
 
 ## Theming (light and dark)
 
-`stylesheet.css` is the dark theme plus all layout. `stylesheet-light.css` `@import`s it and overrides only colors. GNOME 48–50 loads `stylesheet-<variant>.css` by itself (`Main.getStyleVariant()`) and reloads it when the color scheme changes. **Set every color explicitly**: inheriting the shell theme's text color produced dark text on the dark panel. **Test both themes**: Ubuntu's session mode is `prefer-light` (light shell with the default color scheme), while a plain `gnome-shell --headless` runs the `user` mode, which stays dark. Pass `--mode=ubuntu` to the headless shell to see what Ubuntu users see.
+A single `stylesheet.css` holds dark colors plus a `.ab-light` override section. On every `open()`, `_applyAppearance()` checks `Main.getStyleVariant()` and toggles `ab-light` on the backdrop and the panel. Set every color explicitly: inheriting the shell theme's text color produced dark text on the dark panel. **Don't rely on `stylesheet-light.css`**: GNOME didn't always reload extension stylesheets after a theme change (seen on Ubuntu with GNOME 50). To test light, use `--mode=ubuntu` with Ubuntu's Light appearance (`gtk-theme 'Yaru-purple'` and `color-scheme 'default'`), and save and restore both keys. The plain `user` mode never goes light, and Ubuntu mode rewrites `color-scheme` to match a `*-dark` gtk theme.
 
 ## Planned-mode placeholders
 

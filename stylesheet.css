@@ -1,9 +1,9 @@
-/* Ask Bar — dark theme, and the layout shared by both themes.
+/* Ask Bar.
  *
- * GNOME loads stylesheet-light.css instead when the shell is light (e.g.
- * Ubuntu with the default color scheme); it imports this file and only
- * overrides colors. Every color is set explicitly here: inheriting the
- * shell theme's text color gave dark text on a dark panel in light mode. */
+ * Dark colors by default. When the shell is light, ui/bar.js adds the
+ * "ab-light" class (checked on every open), which switches to the light
+ * colors at the end of this file. Every color is set explicitly: inheriting
+ * the shell theme's text color gave dark text on a dark panel. */
 
 .ab-backdrop {
   background-color: transparent;
@@ -151,4 +151,95 @@
 
 .ab-compact .ab-row-title {
   font-size: 10.5pt;
+}
+
+/* ══ Light theme ═══════════════════════════════════════ */
+
+.ab-backdrop-dim.ab-light {
+  background-color: rgba(0, 0, 0, 0.15);
+}
+
+.ab-panel.ab-light {
+  color: #1e1e22;
+  background-color: rgba(250, 250, 251, 0.97);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22);
+}
+
+/* ── Input ─────────────────────────────────────────────── */
+
+.ab-light .ab-mode-icon {
+  color: #1c71d8;
+}
+
+.ab-light .ab-chip {
+  background-color: rgba(28, 113, 216, 0.12);
+  color: #1a5fb4;
+}
+
+.ab-light .ab-entry,
+.ab-light .ab-entry:focus,
+.ab-light .ab-entry:hover {
+  color: #1e1e22;
+  caret-color: #1c71d8;
+  selection-background-color: rgba(28, 113, 216, 0.3);
+  selected-color: #1e1e22;
+}
+
+.ab-light .ab-entry .hint-text {
+  color: rgba(0, 0, 0, 0.4);
+}
+
+/* ── Results ───────────────────────────────────────────── */
+
+.ab-light .ab-scroll {
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.ab-light .ab-row {
+  color: #1e1e22;
+}
+
+.ab-light .ab-row:selected {
+  background-color: rgba(28, 113, 216, 0.12);
+}
+
+.ab-light .ab-row:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.ab-light .ab-row:selected:hover {
+  background-color: rgba(28, 113, 216, 0.16);
+}
+
+.ab-light .ab-row-title {
+  color: #1e1e22;
+}
+
+.ab-light .ab-row-subtitle {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.ab-light .ab-row-kind {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.ab-light .ab-row StIcon {
+  color: #1e1e22;
+}
+
+.ab-light .ab-dim,
+.ab-light .ab-row StIcon.ab-dim {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+/* ── Footer ────────────────────────────────────────────── */
+
+.ab-light .ab-key {
+  background-color: rgba(0, 0, 0, 0.07);
+  color: rgba(0, 0, 0, 0.65);
+}
+
+.ab-light .ab-key-label {
+  color: rgba(0, 0, 0, 0.5);
 }

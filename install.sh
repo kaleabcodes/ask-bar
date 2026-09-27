@@ -18,7 +18,7 @@ UUID=ask-bar@kaleabcodes.dev
 EXT_DIR="$HOME/.local/share/gnome-shell/extensions"
 DEST="$EXT_DIR/$UUID"
 # Everything the extension needs at runtime (folders are copied whole).
-SOURCES=(extension.js prefs.js stylesheet.css stylesheet-light.css metadata.json LICENSE core lib providers ui schemas)
+SOURCES=(extension.js prefs.js stylesheet.css metadata.json LICENSE core lib providers ui schemas)
 
 # Adds or removes the extension in GNOME's list of enabled extensions, so
 # it's on (or off) from the next login without needing the shell running.

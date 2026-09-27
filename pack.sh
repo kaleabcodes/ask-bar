@@ -14,7 +14,7 @@ OUT="$SRC/dist/$UUID.shell-extension.zip"
 BUILD=$(mktemp -d)
 trap 'rm -rf "$BUILD"' EXIT
 
-for f in extension.js prefs.js stylesheet.css stylesheet-light.css metadata.json LICENSE core lib providers ui; do
+for f in extension.js prefs.js stylesheet.css metadata.json LICENSE core lib providers ui; do
     cp -r "$f" "$BUILD/"
 done
 mkdir "$BUILD/schemas"
