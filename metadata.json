@@ -1,9 +1,13 @@
 {
   "uuid": "ask-bar@kaleabcodes.dev",
   "name": "Ask Bar",
-  "description": "A fast search bar for GNOME: launch apps, switch windows and calculate from one keyboard shortcut (Alt+Space).",
-  "shell-version": ["48", "49", "50"],
+  "description": "One shortcut to search everything: apps, windows, files and git projects, commands, developer tools (JSON, JWT, Base64, UUID\u2026), math and web shortcuts. Press Alt+Space.",
+  "shell-version": [
+    "48",
+    "49",
+    "50"
+  ],
   "settings-schema": "org.gnome.shell.extensions.ask-bar",
   "url": "https://github.com/kaleabcodes/ask-bar",
-  "version-name": "0.1"
+  "version-name": "1.0"
 }
