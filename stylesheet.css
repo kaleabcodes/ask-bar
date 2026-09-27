@@ -1,4 +1,9 @@
-/* Ask Bar */
+/* Ask Bar — dark theme, and the layout shared by both themes.
+ *
+ * GNOME loads stylesheet-light.css instead when the shell is light (e.g.
+ * Ubuntu with the default color scheme); it imports this file and only
+ * overrides colors. Every color is set explicitly here: inheriting the
+ * shell theme's text color gave dark text on a dark panel in light mode. */
 
 .ab-backdrop {
   background-color: transparent;
@@ -11,6 +16,7 @@
 .ab-panel {
   padding: 8px;
   border-radius: 20px;
+  color: #f6f5f4;
   background-color: rgba(28, 28, 32, 0.97);
   border: 1px solid rgba(255, 255, 255, 0.09);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
@@ -37,19 +43,22 @@
   font-weight: bold;
 }
 
-.ab-entry {
+.ab-entry,
+.ab-entry:focus,
+.ab-entry:hover {
   font-size: 15pt;
   padding: 4px 0;
   border: none;
   background-color: transparent;
   box-shadow: none;
+  color: #f6f5f4;
   caret-color: #78aeed;
   selection-background-color: rgba(120, 174, 237, 0.4);
+  selected-color: #ffffff;
 }
 
-.ab-entry:focus {
-  border: none;
-  box-shadow: none;
+.ab-entry .hint-text {
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* ── Results ───────────────────────────────────────────── */
@@ -67,6 +76,7 @@
 .ab-row {
   border-radius: 12px;
   padding: 7px 12px;
+  color: #f6f5f4;
 }
 
 .ab-row:selected {
@@ -88,16 +98,26 @@
 .ab-row-title {
   font-size: 11pt;
   font-weight: 500;
+  color: #f6f5f4;
 }
 
 .ab-row-subtitle {
   font-size: 9pt;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.55);
 }
 
 .ab-row-kind {
   font-size: 9pt;
   color: rgba(255, 255, 255, 0.4);
+}
+
+.ab-row StIcon {
+  color: #f6f5f4;
+}
+
+.ab-dim,
+.ab-row StIcon.ab-dim {
+  color: rgba(255, 255, 255, 0.35);
 }
 
 /* ── Footer ────────────────────────────────────────────── */
@@ -113,17 +133,13 @@
   background-color: rgba(255, 255, 255, 0.08);
   font-size: 8.5pt;
   font-weight: bold;
-  color: rgba(255, 255, 255, 0.65);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .ab-key-label {
   font-size: 8.5pt;
-  color: rgba(255, 255, 255, 0.45);
+  color: rgba(255, 255, 255, 0.5);
   margin-right: 10px;
-}
-
-.ab-dim {
-  color: rgba(255, 255, 255, 0.35);
 }
 
 /* ── Compact mode ─────────────────────────────────────── */

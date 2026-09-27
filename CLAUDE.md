@@ -37,6 +37,10 @@ for f in *.js core/*.js providers/*.js ui/*.js; do cp "$f" /tmp/x.mjs && node --
 - Async providers: `extension._search` may return a Promise. The bar cancels the previous search's `Gio.Cancellable` on every keystroke and drops results from older generations. It keeps the previous results of the same mode on screen while new ones load, so typing doesn't flicker. Cancellation errors are swallowed (`isCancelled` in `lib/async.js`, where all I/O helpers live).
 - `ui/bar.js`: a full-stage transparent backdrop in `Main.uiGroup` with a centered panel, using `Main.pushModal`/`popModal`. In GNOME 50 the grab object has no `get_seat_state`; the shell's own dialogs don't check the result either. The entry keeps key focus (rows have `can_focus: false`), and arrow keys move a `:selected` pseudo-class. Enter and Ctrl+Enter are handled in the key-press handler (`altActivate`, with an `altLabel` footer hint). `_activate` **closes the bar before calling `activate()`** so the launched app or window gets focus. The selection is kept by result `id` across updates.
 
+## Theming (light and dark)
+
+`stylesheet.css` is the dark theme plus all layout. `stylesheet-light.css` `@import`s it and overrides only colors. GNOME 48–50 loads `stylesheet-<variant>.css` by itself (`Main.getStyleVariant()`) and reloads it when the color scheme changes. **Set every color explicitly**: inheriting the shell theme's text color produced dark text on the dark panel. **Test both themes**: Ubuntu's session mode is `prefer-light` (light shell with the default color scheme), while a plain `gnome-shell --headless` runs the `user` mode, which stays dark. Pass `--mode=ubuntu` to the headless shell to see what Ubuntu users see.
+
 ## Planned-mode placeholders
 
 Modes that aren't built yet return a single "coming soon" row (`COMING_SOON` in `extension.js`). Replace that entry when implementing a mode.
