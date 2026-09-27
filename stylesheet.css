@@ -1,0 +1,119 @@
+/* Ask Bar */
+
+.ab-backdrop {
+  background-color: rgba(0, 0, 0, 0.12);
+}
+
+.ab-panel {
+  padding: 8px;
+  border-radius: 20px;
+  background-color: rgba(28, 28, 32, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+}
+
+/* ── Input ─────────────────────────────────────────────── */
+
+.ab-input-row {
+  spacing: 10px;
+  padding: 8px 12px 10px 12px;
+}
+
+.ab-mode-icon {
+  icon-size: 20px;
+  color: #99c1f1;
+}
+
+.ab-chip {
+  padding: 3px 10px;
+  border-radius: 99px;
+  background-color: rgba(120, 174, 237, 0.18);
+  color: #99c1f1;
+  font-size: 9.5pt;
+  font-weight: bold;
+}
+
+.ab-entry {
+  font-size: 15pt;
+  padding: 4px 0;
+  border: none;
+  background-color: transparent;
+  box-shadow: none;
+  caret-color: #78aeed;
+  selection-background-color: rgba(120, 174, 237, 0.4);
+}
+
+.ab-entry:focus {
+  border: none;
+  box-shadow: none;
+}
+
+/* ── Results ───────────────────────────────────────────── */
+
+.ab-scroll {
+  max-height: 460px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding-top: 6px;
+}
+
+.ab-results {
+  spacing: 2px;
+}
+
+.ab-row {
+  border-radius: 12px;
+  padding: 7px 12px;
+}
+
+.ab-row:selected {
+  background-color: rgba(120, 174, 237, 0.16);
+}
+
+.ab-row:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+.ab-row:selected:hover {
+  background-color: rgba(120, 174, 237, 0.2);
+}
+
+.ab-row-box {
+  spacing: 12px;
+}
+
+.ab-row-title {
+  font-size: 11pt;
+  font-weight: 500;
+}
+
+.ab-row-subtitle {
+  font-size: 9pt;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.ab-row-kind {
+  font-size: 9pt;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ── Footer ────────────────────────────────────────────── */
+
+.ab-footer {
+  spacing: 6px;
+  padding: 8px 12px 2px 12px;
+}
+
+.ab-key {
+  padding: 1px 7px;
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.08);
+  font-size: 8.5pt;
+  font-weight: bold;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.ab-key-label {
+  font-size: 8.5pt;
+  color: rgba(255, 255, 255, 0.45);
+  margin-right: 10px;
+}

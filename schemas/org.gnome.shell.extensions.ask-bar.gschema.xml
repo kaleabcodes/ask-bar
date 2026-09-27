@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.ask-bar"
+          path="/org/gnome/shell/extensions/ask-bar/">
+    <key name="toggle-shortcut" type="as">
+      <default><![CDATA[['<Alt>space']]]></default>
+      <summary>Open Ask Bar</summary>
+      <description>Keyboard shortcut that opens and closes the bar.</description>
+    </key>
+    <key name="max-results" type="i">
+      <range min="3" max="20"/>
+      <default>8</default>
+      <summary>Maximum results</summary>
+      <description>How many results the bar shows at most.</description>
+    </key>
+  </schema>
+</schemalist>
