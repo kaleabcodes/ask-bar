@@ -7,12 +7,12 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {MODES} from './core/parse.js';
 import {AppsProvider} from './providers/apps.js';
 import {CalculatorProvider} from './providers/calculator.js';
+import {FilesProvider} from './providers/files.js';
 import {WindowsProvider} from './providers/windows.js';
 import {AskBar} from './ui/bar.js';
 
 // Modes that are planned but not built yet, shown as a hint row.
 const COMING_SOON = {
-    [MODES.FILES]: ['File search', 'folder-symbolic'],
     [MODES.COMMANDS]: ['Commands', 'utilities-terminal-symbolic'],
     [MODES.WEB]: ['Web search', 'web-browser-symbolic'],
     [MODES.AI]: ['Ask AI', 'starred-symbolic'],
@@ -24,8 +24,12 @@ export default class AskBarExtension extends Extension {
         this._apps = new AppsProvider();
         this._windows = new WindowsProvider();
         this._calculator = new CalculatorProvider();
+        this._files = new FilesProvider();
 
-        this._bar = new AskBar({search: parsed => this._search(parsed)});
+        this._bar = new AskBar({
+            search: (parsed, cancellable) => this._search(parsed, cancellable),
+            onOpen: () => this._files.prefetch(),
+        });
         Main.uiGroup.add_child(this._bar);
 
         Main.wm.addKeybinding('toggle-shortcut', this._settings,
@@ -41,15 +45,22 @@ export default class AskBarExtension extends Extension {
         this._bar.close();
         this._bar.destroy();
         this._bar = null;
-        for (const provider of [this._apps, this._windows, this._calculator])
+        for (const provider of [this._apps, this._windows, this._calculator, this._files])
             provider.destroy();
-        this._apps = this._windows = this._calculator = null;
+        this._apps = this._windows = this._calculator = this._files = null;
         this._settings = null;
     }
 
-    /** @returns {import('./providers/types.js').Result[]} */
-    _search({mode, query}) {
+    /**
+     * @returns {Result[] | Promise<Result[]>} sync for instant sources; a
+     *     Promise for file search
+     */
+    _search({mode, query}, cancellable) {
         const limit = this._settings.get_int('max-results');
+        const top = results => results.sort((a, b) => b.score - a.score).slice(0, limit);
+
+        if (mode === MODES.FILES)
+            return this._files.search(query, cancellable).then(top);
 
         if (COMING_SOON[mode]) {
             const [name, icon] = COMING_SOON[mode];
@@ -67,10 +78,10 @@ export default class AskBarExtension extends Extension {
         if (mode === MODES.MATH)
             return this._calculator.search(query, {forced: true});
 
-        return [
+        return top([
             ...this._calculator.search(query),
             ...this._apps.search(query),
             ...this._windows.search(query),
-        ].sort((a, b) => b.score - a.score).slice(0, limit);
+        ]);
     }
 }

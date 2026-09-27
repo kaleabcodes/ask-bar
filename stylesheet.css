@@ -117,3 +117,7 @@
   color: rgba(255, 255, 255, 0.45);
   margin-right: 10px;
 }
+
+.ab-dim {
+  color: rgba(255, 255, 255, 0.35);
+}

@@ -17,20 +17,24 @@ Press **Alt+Space**, start typing, hit Enter.
   apps rank first
 - **Open windows**: jump to any window on any workspace
 - **Calculator**: type `2340 * 1.15` and the answer appears; Enter copies it
+- **Files (`@`)**: `@readme` finds files and folders instantly through
+  GNOME's file index, plus your **git projects** (which GNOME doesn't
+  index). A bare `@` lists recent files. Enter opens, **Ctrl+Enter** shows
+  the item in Files. Search by path too: `@repo/dock`
 - **Keyboard first**: ↑↓ to move, Enter to open, Esc to close
 
 ### Coming next
 
 | Prefix | Mode |
 | --- | --- |
-| `@` | File and folder search |
 | `/` | Commands (lock, dark mode, developer tools…) |
 | `!` | Web search shortcuts (`!gh`, `!yt`…) |
 | `?` | Ask AI, with `@files` as context |
 
 ## Installation
 
-Requires **GNOME Shell 48, 49 or 50**.
+Requires **GNOME Shell 48, 49 or 50**. File search uses `localsearch`
+(GNOME's file indexer, installed by default on GNOME desktops).
 
 ```bash
 git clone https://github.com/kaleabcodes/ask-bar.git

@@ -4,6 +4,7 @@
 // While open it holds a modal grab, so all keyboard input comes here.
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
@@ -11,6 +12,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 
 import {MODES, parse} from '../core/parse.js';
+import {isCancelled} from '../lib/async.js';
 import {ResultRow} from './resultRow.js';
 
 const PANEL_WIDTH = 680;
@@ -30,9 +32,13 @@ export const AskBar = GObject.registerClass(
 class AskBar extends St.Widget {
     /**
      * @param {object} params
-     * @param {(parsed: ReturnType<typeof parse>) => import('../providers/types.js').Result[]} params.search
+     * @param {(parsed: ReturnType<typeof parse>, cancellable: Gio.Cancellable) =>
+     *     Result[] | Promise<Result[]>} params.search
+     *     Sync for instant sources, a Promise for slow ones (files); the
+     *     cancellable is cancelled as soon as the query changes.
+     * @param {() => void} [params.onOpen]  e.g. to warm caches
      */
-    _init({search}) {
+    _init({search, onOpen = () => {}}) {
         super._init({
             style_class: 'ab-backdrop',
             reactive: true,
@@ -43,7 +49,11 @@ class AskBar extends St.Widget {
             coordinate: Clutter.BindCoordinate.ALL,
         }));
         this._search = search;
+        this._onOpen = onOpen;
         this._grab = null;
+        this._cancellable = null;   // for the in-flight async search
+        this._generation = 0;       // ignores results of superseded searches
+        this._resultsMode = null;
         this._results = [];
         this._rows = [];
         this._selected = 0;
@@ -81,15 +91,16 @@ class AskBar extends St.Widget {
         this._panel.add_child(this._scroll);
 
         const footer = new St.BoxLayout({style_class: 'ab-footer'});
-        for (const [key, action] of [['↑↓', 'Navigate'], ['Enter', 'Open'], ['Esc', 'Close']]) {
-            footer.add_child(new St.Label({text: key, style_class: 'ab-key'}));
-            footer.add_child(new St.Label({text: action, style_class: 'ab-key-label'}));
-        }
+        for (const [key, action] of [['↑↓', 'Navigate'], ['Enter', 'Open'], ['Esc', 'Close']])
+            addHint(footer, key, action);
+        // Shown when the selected result has a Ctrl+Enter action.
+        this._altHint = new St.BoxLayout({visible: false});
+        this._altHintLabel = addHint(this._altHint, 'Ctrl+Enter', '');
+        footer.add_child(this._altHint);
         this._panel.add_child(footer);
 
         this._entry.clutter_text.connect('text-changed', () => this._update());
         this._entry.clutter_text.connect('key-press-event', (_, event) => this._onKeyPress(event));
-        this._entry.clutter_text.connect('activate', () => this._activate(this._selected));
     }
 
     get isOpen() {
@@ -111,6 +122,7 @@ class AskBar extends St.Widget {
 
         this.get_parent()?.set_child_above_sibling(this, null);
         this._placePanel();
+        this._onOpen();
         this._entry.text = '';
         this._update();
         this.show();
@@ -133,8 +145,9 @@ class AskBar extends St.Widget {
             return;
         Main.popModal(this._grab);
         this._grab = null;
+        this._cancelSearch();
         this.hide();
-        this._setResults([]);
+        this._setResults([], null);
     }
 
     // Centered horizontally on the monitor with the pointer, near the top.
@@ -155,10 +168,36 @@ class AskBar extends St.Widget {
         this._modeIcon.icon_name = info.icon;
         this._chip.visible = info.chip !== null;
         this._chip.text = info.chip ?? '';
-        this._setResults(this._search(parsed));
+
+        this._cancelSearch();
+        const generation = ++this._generation;
+        this._cancellable = new Gio.Cancellable();
+        const results = this._search(parsed, this._cancellable);
+        if (!(results instanceof Promise)) {
+            this._setResults(results, parsed.mode);
+            return;
+        }
+
+        // Keep showing the previous results of the same mode while the new
+        // ones load (no flicker while typing); otherwise say we're searching.
+        if (this._resultsMode !== parsed.mode)
+            this._setResults([searchingRow(info.icon)], parsed.mode);
+        results.then(found => {
+            if (generation === this._generation)
+                this._setResults(found, parsed.mode);
+        }).catch(e => {
+            if (!isCancelled(e) && generation === this._generation)
+                this._setResults([errorRow(e.message)], parsed.mode);
+        });
     }
 
-    _setResults(results) {
+    _cancelSearch() {
+        this._cancellable?.cancel();
+        this._cancellable = null;
+    }
+
+    _setResults(results, mode) {
+        this._resultsMode = mode;
         // Keep the same result selected when the list updates while typing.
         const selectedId = this._results[this._selected]?.id;
         this._results = results;
@@ -190,15 +229,20 @@ class AskBar extends St.Widget {
         row.setSelected(true);
         if (scroll)
             ensureActorVisibleInScrollView(this._scroll, row);
+
+        const altLabel = this._results[this._selected]?.altLabel;
+        this._altHint.visible = Boolean(altLabel);
+        this._altHintLabel.text = altLabel ?? '';
     }
 
-    _activate(index) {
+    _activate(index, alternate = false) {
         const result = this._results[index];
-        if (!result?.activate)
+        const action = alternate ? result?.altActivate : result?.activate;
+        if (!action)
             return;
         // Release the grab first so the launched app or window gets focus.
         this.close();
-        result.activate();
+        action();
     }
 
     _onKeyPress(event) {
@@ -211,6 +255,11 @@ class AskBar extends St.Widget {
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Up:
             this._select(this._selected - 1);
+            return Clutter.EVENT_STOP;
+        case Clutter.KEY_Return:
+        case Clutter.KEY_KP_Enter:
+            this._activate(this._selected,
+                (event.get_state() & Clutter.ModifierType.CONTROL_MASK) !== 0);
             return Clutter.EVENT_STOP;
         default:
             return Clutter.EVENT_PROPAGATE;
@@ -227,3 +276,34 @@ class AskBar extends St.Widget {
         return Clutter.EVENT_STOP;
     }
 });
+
+function addHint(box, key, action) {
+    box.add_child(new St.Label({text: key, style_class: 'ab-key'}));
+    const label = new St.Label({text: action, style_class: 'ab-key-label'});
+    box.add_child(label);
+    return label;
+}
+
+function searchingRow(iconName) {
+    return {
+        id: 'status:searching',
+        title: 'Searching…',
+        subtitle: '',
+        kind: '',
+        score: 0,
+        createIcon: () => new St.Icon({icon_name: iconName, icon_size: 32, style_class: 'ab-dim'}),
+        activate: null,
+    };
+}
+
+function errorRow(message) {
+    return {
+        id: 'status:error',
+        title: 'Search failed',
+        subtitle: message,
+        kind: '',
+        score: 0,
+        createIcon: () => new St.Icon({icon_name: 'dialog-warning-symbolic', icon_size: 32}),
+        activate: null,
+    };
+}
