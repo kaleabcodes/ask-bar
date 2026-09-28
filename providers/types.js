@@ -11,6 +11,7 @@
  * @property {(() => void)|null} activate   null for rows that only show information
  * @property {() => void} [altActivate]      Ctrl+Enter action, if any
  * @property {string} [altLabel]             footer hint for altActivate, e.g. "Show in Files"
+ * @property {() => Result[]} [actions]     Alt+Enter action list (open in editor, …)
  * @property {string} [fill]                 Enter/Tab puts this text in the bar instead
  *                                           of closing (e.g. "!gh ")
  */

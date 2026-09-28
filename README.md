@@ -31,6 +31,11 @@ from a single bar. Press **Alt+Space** and start typing.
 - **Ask AI apps**: if Claude or ChatGPT is installed, "Ask Claude" and
   "Ask ChatGPT" appear next to the web search, opening the app with your
   question
+- **Actions** (Alt+Enter): open a file or project in your code editor
+  (VS Code, Cursor, JetBrains IDEs, Zed…) or terminal, open it on GitHub or
+  GitLab, copy its path; run an app's own actions like "New Window"
+- **Learns what you pick**: results you choose often rank first for what
+  you typed (stored only on your computer)
 - **Keyboard first** and **configurable**: every source, the look and the
   shortcut can be changed in the settings
 
@@ -52,6 +57,7 @@ Press **Alt+Space**, type, then press **Enter**.
 | ↑ ↓ | Move the selection |
 | Enter | Open or run |
 | Ctrl+Enter | Show a file in Files |
+| Alt+Enter | Actions: open in editor or terminal, on GitHub, copy path… (Esc to go back) |
 | Tab | Complete a web shortcut |
 | Esc | Close |
 

@@ -28,9 +28,13 @@ const DEFAULT_MODE_MIN_QUERY = 3;
 const SCAN_SKIP = ['node_modules', 'snap', 'Android', 'go', 'venv', 'flatpak'];
 
 export class FilesProvider {
-    /** @param {Gio.Settings} settings */
-    constructor(settings) {
+    /**
+     * @param {Gio.Settings} settings
+     * @param {import('./actions.js').ActionsCatalog} actions  Alt+Enter actions
+     */
+    constructor(settings, actions) {
         this._settings = settings;
+        this._actions = actions;
         this._home = GLib.get_home_dir();
         this._projects = [];         // paths of git repositories
         this._projectsScannedAt = 0;
@@ -163,6 +167,7 @@ export class FilesProvider {
             activate: () => openUri(uri),
             altActivate: () => showInFiles(uri),
             altLabel: 'Show in Files',
+            actions: () => this._actions.forPath(path, {isFolder}),
         };
     }
 

@@ -64,6 +64,18 @@ function searchPage(settings) {
     const web = new Adw.PreferencesGroup({title: 'Web'});
     web.add(switchRow(settings, 'web-fallback', 'Offer a web search',
         'End results with "Search the web for …" and open typed URLs'));
+    const learning = new Adw.PreferencesGroup({title: 'Learning'});
+    learning.add(switchRow(settings, 'learn-choices', 'Learn from your choices',
+        'Results you pick often rank higher for what you typed. Stored only on this computer.'));
+    const forget = new Adw.ButtonRow({title: 'Forget Learned Choices'});
+    forget.connect('activated', () => {
+        settings.set_int('clear-learning', settings.get_int('clear-learning') + 1);
+        forget.set_title('Forgotten');
+        forget.set_sensitive(false);
+    });
+    learning.add(forget);
+    page.add(learning);
+
     web.add(switchRow(settings, 'ask-ai-apps', 'Ask AI apps',
         'Offer “Ask Claude” / “Ask ChatGPT” when those apps are installed'));
     const engine = engineRow(settings);
@@ -105,7 +117,9 @@ function appearancePage(settings) {
     resetRow.add_css_class('destructive-action');
     resetRow.connect('activated', () => {
         for (const key of settings.settings_schema.list_keys()) {
-            if (!key.startsWith('custom-')) // keep your commands and shortcuts
+            // Keep your commands and shortcuts; resetting clear-learning would
+            // count as "forget" and wipe what was learned.
+            if (!key.startsWith('custom-') && key !== 'clear-learning')
                 settings.reset(key);
         }
     });

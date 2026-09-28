@@ -13,7 +13,9 @@ const USAGE_RANKS = 30;
 const ICON_SIZE = 32;
 
 export class AppsProvider {
-    constructor() {
+    /** @param {import('./actions.js').ActionsCatalog} actions  Alt+Enter actions */
+    constructor(actions) {
+        this._actions = actions;
         this._appSystem = Shell.AppSystem.get_default();
         this._entries = null; // cached search fields, rebuilt when apps change
         this._appSystem.connectObject('installed-changed', () => {
@@ -82,6 +84,7 @@ export class AppsProvider {
             score,
             createIcon: () => app.create_icon_texture(ICON_SIZE),
             activate: () => app.activate(),
+            actions: () => this._actions.forApp(app),
         };
     }
 

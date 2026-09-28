@@ -11,11 +11,13 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 
+import {bestScore} from '../core/fuzzy.js';
 import {MODES, parse} from '../core/parse.js';
 import {isCancelled} from '../lib/async.js';
 import {ResultRow} from './resultRow.js';
 
 const ANIMATION_MS = 120;
+const HINT = 'Ask anything, @ files, / commands, = math';
 
 const MODE_INFO = {
     [MODES.ALL]: {icon: 'system-search-symbolic', chip: null},
@@ -37,8 +39,10 @@ class AskBar extends St.Widget {
      *     both: `results` now, then `more` replaces them when ready. The
      *     cancellable is cancelled as soon as the query changes.
      * @param {() => void} [params.onOpen]  e.g. to warm caches
+     * @param {(parsed: ReturnType<typeof parse>, result: Result) => void} [params.onActivated]
+     *     called when a result is chosen (e.g. to learn from it)
      */
-    _init({settings, search, onOpen = () => {}}) {
+    _init({settings, search, onOpen = () => {}, onActivated = () => {}}) {
         super._init({
             style_class: 'ab-backdrop',
             reactive: true,
@@ -51,7 +55,10 @@ class AskBar extends St.Widget {
         this._settings = settings;
         this._search = search;
         this._onOpen = onOpen;
+        this._onActivated = onActivated;
         this._lastQuery = '';
+        // While the Alt+Enter action list is shown: {result, actions, savedText}.
+        this._actionsFor = null;
         this._grab = null;
         this._cancellable = null;   // for the in-flight async search
         this._generation = 0;       // ignores results of superseded searches
@@ -73,7 +80,7 @@ class AskBar extends St.Widget {
         this._chip = new St.Label({style_class: 'ab-chip', visible: false, y_align: Clutter.ActorAlign.CENTER});
         this._entry = new St.Entry({
             style_class: 'ab-entry',
-            hint_text: 'Ask anything, @ files, / commands, = math',
+            hint_text: HINT,
             can_focus: true,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
@@ -100,6 +107,10 @@ class AskBar extends St.Widget {
         this._altHint = new St.BoxLayout({visible: false});
         this._altHintLabel = addHint(this._altHint, 'Ctrl+Enter', '');
         footer.add_child(this._altHint);
+        // Shown when the selected result has an Alt+Enter action list.
+        this._actionsHint = new St.BoxLayout({visible: false});
+        addHint(this._actionsHint, 'Alt+Enter', 'Actions');
+        footer.add_child(this._actionsHint);
         // Shown when Tab completes the selected result (e.g. "!gh ").
         this._fillHint = new St.BoxLayout({visible: false});
         addHint(this._fillHint, 'Tab', 'Complete');
@@ -174,7 +185,9 @@ class AskBar extends St.Widget {
             return;
         Main.popModal(this._grab);
         this._grab = null;
-        this._lastQuery = this._entry.text;
+        this._lastQuery = this._actionsFor?.savedText ?? this._entry.text;
+        this._actionsFor = null;
+        this._entry.hint_text = HINT;
         this._cancelSearch();
         this.hide();
         this._setResults([], null);
@@ -197,6 +210,10 @@ class AskBar extends St.Widget {
 
     _update() {
         this._userSelected = false;
+        if (this._actionsFor) {
+            this._showActions();
+            return;
+        }
         const parsed = parse(this._entry.text);
         const info = MODE_INFO[parsed.mode];
         this._modeIcon.icon_name = info.icon;
@@ -281,6 +298,7 @@ class AskBar extends St.Widget {
             ensureActorVisibleInScrollView(this._scroll, row);
 
         const result = this._results[this._selected];
+        this._actionsHint.visible = Boolean(result?.actions) && !this._actionsFor;
         this._altHint.visible = Boolean(result?.altLabel);
         this._altHintLabel.text = result?.altLabel ?? '';
         this._fillHint.visible = Boolean(result?.fill);
@@ -295,9 +313,50 @@ class AskBar extends St.Widget {
         const action = alternate ? result?.altActivate : result?.activate;
         if (!action)
             return;
+        // In the action list, the choice to learn is the item it was opened for.
+        if (this._actionsFor)
+            this._onActivated(parse(this._actionsFor.savedText), this._actionsFor.result);
+        else
+            this._onActivated(parse(this._entry.text), result);
         // Release the grab first so the launched app or window gets focus.
         this.close();
         action();
+    }
+
+    // ── Alt+Enter action list ─────────────────────────────────────────
+
+    _openActions(index) {
+        const result = this._results[index];
+        if (!result?.actions || this._actionsFor)
+            return;
+        this._actionsFor = {result, actions: result.actions(), savedText: this._entry.text};
+        this._modeIcon.icon_name = 'view-more-symbolic';
+        this._chip.text = 'Actions';
+        this._chip.visible = true;
+        this._entry.hint_text = `Actions for ${result.title}`;
+        this._entry.text = ''; // runs _update, which shows the actions
+        this._update();
+    }
+
+    // Typing filters the actions.
+    _showActions() {
+        const query = this._entry.text.trim();
+        const actions = this._actionsFor.actions
+            .map(a => ({a, score: query ? bestScore(query, [a.title, a.subtitle]) : 0}))
+            .filter(({score}) => score !== null)
+            .sort((x, y) => (query ? y.score - x.score : 0))
+            .map(({a}) => a);
+        this._setResults(actions, 'actions');
+    }
+
+    // Back to the results the action list was opened from.
+    _closeActions() {
+        const {savedText} = this._actionsFor;
+        this._actionsFor = null;
+        this._entry.hint_text = HINT;
+        this._entry.text = savedText;
+        this._entry.clutter_text.set_cursor_position(-1);
+        this._update();
     }
 
     // Puts text in the bar and keeps it open, e.g. "!gh " from a shortcut.
@@ -315,7 +374,10 @@ class AskBar extends St.Widget {
             return Clutter.EVENT_STOP; // never move focus out of the entry
         }
         case Clutter.KEY_Escape:
-            this.close();
+            if (this._actionsFor)
+                this._closeActions();
+            else
+                this.close();
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Down:
             this._userSelected = true;
@@ -327,8 +389,10 @@ class AskBar extends St.Widget {
             return Clutter.EVENT_STOP;
         case Clutter.KEY_Return:
         case Clutter.KEY_KP_Enter:
-            this._activate(this._selected,
-                (event.get_state() & Clutter.ModifierType.CONTROL_MASK) !== 0);
+            if (event.get_state() & Clutter.ModifierType.MOD1_MASK)
+                this._openActions(this._selected);
+            else
+                this._activate(this._selected, (event.get_state() & Clutter.ModifierType.CONTROL_MASK) !== 0);
             return Clutter.EVENT_STOP;
         default:
             return Clutter.EVENT_PROPAGATE;

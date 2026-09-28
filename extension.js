@@ -5,11 +5,13 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {MODES} from './core/parse.js';
+import {ActionsCatalog} from './providers/actions.js';
 import {AppsProvider} from './providers/apps.js';
 import {AssistantsProvider} from './providers/assistants.js';
 import {CalculatorProvider} from './providers/calculator.js';
 import {CommandsProvider} from './providers/commands.js';
 import {FilesProvider} from './providers/files.js';
+import {LearningStore} from './providers/learning.js';
 import {WebProvider} from './providers/web.js';
 import {WindowsProvider} from './providers/windows.js';
 import {AskBar} from './ui/bar.js';
@@ -21,10 +23,12 @@ const RELATIVE_CUTOFF = 0.35;
 export default class AskBarExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
-        this._apps = new AppsProvider();
+        this._actions = new ActionsCatalog(this.path);
+        this._learning = new LearningStore();
+        this._apps = new AppsProvider(this._actions);
         this._windows = new WindowsProvider();
         this._calculator = new CalculatorProvider();
-        this._files = new FilesProvider(this._settings);
+        this._files = new FilesProvider(this._settings, this._actions);
         this._web = new WebProvider(this._settings, this.path);
         this._assistants = new AssistantsProvider();
         this._commands = new CommandsProvider({
@@ -36,7 +40,13 @@ export default class AskBarExtension extends Extension {
             settings: this._settings,
             search: (parsed, cancellable) => this._search(parsed, cancellable),
             onOpen: () => this._files.prefetch(),
+            onActivated: (parsed, result) => {
+                if (this._settings.get_boolean('learn-choices'))
+                    this._learning.record(learningKey(parsed), result.id);
+            },
         });
+        // "Forget learned choices" in the settings bumps this counter.
+        this._settings.connectObject('changed::clear-learning', () => this._learning.clear(), this);
         Main.uiGroup.add_child(this._bar);
 
         Main.wm.addKeybinding('toggle-shortcut', this._settings,
@@ -49,19 +59,20 @@ export default class AskBarExtension extends Extension {
     disable() {
         Main.wm.removeKeybinding('toggle-shortcut');
         Main.overview.disconnectObject(this);
+        this._settings.disconnectObject(this);
         this._bar.close();
         this._bar.destroy();
         this._bar = null;
         for (const provider of this._providers())
             provider.destroy();
         this._apps = this._windows = this._calculator = this._files = this._web = this._commands = null;
-        this._assistants = null;
+        this._assistants = this._actions = this._learning = null;
         this._settings = null;
     }
 
     _providers() {
         return [this._apps, this._windows, this._calculator, this._files, this._web, this._commands,
-            this._assistants];
+            this._assistants, this._actions, this._learning];
     }
 
     /**
@@ -69,9 +80,19 @@ export default class AskBarExtension extends Extension {
      *     sync for instant sources, a Promise for file search, or both for
      *     the default mode (instant results, then with files added)
      */
-    _search({mode, query}, cancellable) {
+    _search(parsed, cancellable) {
+        const {mode, query} = parsed;
         const limit = this._settings.get_int('max-results');
-        const top = results => results.sort((a, b) => b.score - a.score).slice(0, limit);
+        // Boosts results you've picked before for this query (see core/learning.js).
+        const learn = results => {
+            if (query && this._settings.get_boolean('learn-choices')) {
+                const key = learningKey(parsed);
+                for (const r of results)
+                    r.score += this._learning.bonus(key, r.id);
+            }
+            return results;
+        };
+        const top = results => learn(results).sort((a, b) => b.score - a.score).slice(0, limit);
 
         switch (mode) {
         case MODES.FILES:
@@ -109,7 +130,7 @@ export default class AskBarExtension extends Extension {
         // With a query, drop matches far weaker than the best one (e.g. an
         // app whose description happens to contain the letters of "readme").
         const rank = results => {
-            const sorted = results.sort((a, b) => b.score - a.score);
+            const sorted = learn(results).sort((a, b) => b.score - a.score);
             const best = sorted[0]?.score ?? 0;
             return (query ? sorted.filter(r => r.score >= best * RELATIVE_CUTOFF) : sorted).slice(0, limit);
         };
@@ -127,6 +148,11 @@ export default class AskBarExtension extends Extension {
             .then(files => rankWithFallback([...instant, ...files]));
         return {results: rankWithFallback([...instant]), more};
     }
+}
+
+// What was typed, including the mode prefix, so "@te" and "te" learn separately.
+function learningKey({prefix, query}) {
+    return `${prefix}${query}`;
 }
 
 function notice(title, subtitle, icon) {

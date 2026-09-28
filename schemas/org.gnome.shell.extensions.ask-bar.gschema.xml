@@ -79,6 +79,17 @@
       <description>Offer "Ask Claude" / "Ask ChatGPT" for installed AI desktop apps.</description>
     </key>
 
+    <key name="learn-choices" type="b">
+      <default>true</default>
+      <summary>Learn from your choices</summary>
+      <description>Rank results you pick often higher for what you typed. Stored only on this computer.</description>
+    </key>
+    <key name="clear-learning" type="i">
+      <default>0</default>
+      <summary>Forget learned choices</summary>
+      <description>Changing this value (from the settings button) clears what was learned.</description>
+    </key>
+
     <!-- Files -->
     <key name="recent-files-count" type="i">
       <range min="0" max="30"/>
