@@ -23,6 +23,7 @@ const ICON_SIZE = 32;
 // apps (fuzzy scatter matches would be noise). Substring matches score 100+.
 const DEFAULT_MODE_MIN_SCORE = 90;
 const DEFAULT_MODE_MIN_QUERY = 3;
+const DRIVE_RESULTS = 20; // best matches taken from other drives
 
 // Big folders that never contain your projects; skipping them keeps the scan fast.
 const SCAN_SKIP = ['node_modules', 'snap', 'Android', 'go', 'venv', 'flatpak'];
@@ -31,10 +32,12 @@ export class FilesProvider {
     /**
      * @param {Gio.Settings} settings
      * @param {import('./actions.js').ActionsCatalog} actions  Alt+Enter actions
+     * @param {import('./drives.js').DrivesProvider} drives   mounted drives to scan
      */
-    constructor(settings, actions) {
+    constructor(settings, actions, drives) {
         this._settings = settings;
         this._actions = actions;
+        this._drives = drives;
         this._home = GLib.get_home_dir();
         this._projects = [];         // paths of git repositories
         this._projectsScannedAt = 0;
@@ -81,9 +84,10 @@ export class FilesProvider {
 
         await sleep(DEBOUNCE_MS, cancellable);
         const words = query.split(/[\s/]+/).filter(Boolean);
-        const [files, folders] = await Promise.all([
+        const [files, folders, drivePaths] = await Promise.all([
             this._index(['-f', ...words], cancellable),
             this._index(['-s', ...words], cancellable),
+            this._drives.search(query, cancellable),
         ]);
         const folderSet = new Set(folders);
         const projects = this._settings.get_boolean('index-projects') ? this._projects : [];
@@ -101,7 +105,26 @@ export class FilesProvider {
             if (score !== null)
                 results.push(this._result(path, score, {isFolder, isProject}));
         }
-        return results;
+        return [...results, ...this._driveResults(query, drivePaths, seen)];
+    }
+
+    // Files on other drives come from a plain list, so whether each is a
+    // folder is only checked for the best few matches.
+    _driveResults(query, paths, seen) {
+        const scored = [];
+        for (const path of paths) {
+            if (seen.has(path))
+                continue;
+            seen.add(path);
+            const score = scorePath(query, path, {home: this._home});
+            if (score !== null)
+                scored.push({path, score});
+        }
+        return scored.sort((a, b) => b.score - a.score).slice(0, DRIVE_RESULTS).map(({path}) => {
+            const isFolder = GLib.file_test(path, GLib.FileTest.IS_DIR);
+            const score = scorePath(query, path, {home: this._home, isFolder});
+            return this._result(path, score, {isFolder, isProject: false});
+        });
     }
 
     async _index(args, cancellable) {
@@ -141,7 +164,8 @@ export class FilesProvider {
         const prune = SCAN_SKIP.flatMap(name => ['-o', '-name', name]);
         try {
             const out = await run([
-                'find', this._home, '-maxdepth', `${this._settings.get_int('project-scan-depth')}`,
+                'find', this._home, ...this._drives.mountedRoots(),
+                '-maxdepth', `${this._settings.get_int('project-scan-depth')}`,
                 '-name', '.git', '-print', '-prune',
                 '-o', '(', '-name', '.*', ...prune, ')', '-prune',
             ], this._cancellable);

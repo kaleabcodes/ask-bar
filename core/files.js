@@ -118,7 +118,11 @@ export function scorePath(query, path, {home, isFolder = false, isProject = fals
  */
 export function displayFolder(path, home) {
     const folder = path.slice(0, path.lastIndexOf('/')) || '/';
-    return folder.startsWith(home) ? `~${folder.slice(home.length)}` : folder;
+    if (folder.startsWith(home))
+        return `~${folder.slice(home.length)}`;
+    // Drives: "/run/media/me/Local Disk/Projects" -> "Local Disk/Projects"
+    const drive = /^\/(?:run\/)?media\/[^/]+\/(.+)$/.exec(folder);
+    return drive ? drive[1] : folder;
 }
 
 export function basename(path) {

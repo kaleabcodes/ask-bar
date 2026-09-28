@@ -18,8 +18,10 @@ from a single bar. Press **Alt+Space** and start typing.
 ## Features
 
 - **Apps and windows**: fuzzy search; your most-used apps rank first
-- **Files and projects**: GNOME's file index plus your **git repositories**
-  (which GNOME doesn't index), with the best matches in every search
+- **Files and projects**: your home folder (GNOME's file index), your
+  **git repositories** (which GNOME doesn't index), **other drives and USB
+  sticks** while they're mounted, with the best matches in every search.
+  Drives that aren't mounted are listed so one Enter mounts them
 - **Commands**: lock, suspend, dark mode, Night Light, Do Not Disturb,
   screenshot, and your own shell commands
 - **Developer tools**: format JSON, decode JWTs, Base64 and URL

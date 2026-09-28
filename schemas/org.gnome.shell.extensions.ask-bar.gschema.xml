@@ -91,6 +91,11 @@
     </key>
 
     <!-- Files -->
+    <key name="search-drives" type="b">
+      <default>true</default>
+      <summary>Search other drives</summary>
+      <description>Include files on mounted drives and USB sticks in @ search, using a file list kept in ~/.cache/ask-bar.</description>
+    </key>
     <key name="recent-files-count" type="i">
       <range min="0" max="30"/>
       <default>10</default>

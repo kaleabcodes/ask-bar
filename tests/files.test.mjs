@@ -57,3 +57,8 @@ test('displays folders relative to home', () => {
     assert.equal(displayFolder('/home/kaleab/Desktop/x.txt', HOME), '~/Desktop');
     assert.equal(displayFolder('/etc/hosts', HOME), '/etc');
 });
+
+test('displays drive folders by drive name', () => {
+    assert.equal(displayFolder('/run/media/kaleab/Local Disk/Projects/a.txt', HOME), 'Local Disk/Projects');
+    assert.equal(displayFolder('/media/kaleab/USB/b.pdf', HOME), 'USB');
+});

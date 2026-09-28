@@ -84,6 +84,8 @@ function searchPage(settings) {
     page.add(web);
 
     const filesGroup = new Adw.PreferencesGroup({title: 'Files (@)'});
+    filesGroup.add(switchRow(settings, 'search-drives', 'Search other drives and USB sticks',
+        'Files on mounted drives (e.g. “Local Disk”) and plugged-in USB drives'));
     filesGroup.add(spinRow(settings, 'recent-files-count', 'Recent files',
         'How many recent files a bare @ shows', 0, 30, 1));
     filesGroup.add(switchRow(settings, 'index-projects', 'Find git projects',

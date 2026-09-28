@@ -10,6 +10,7 @@ import {AppsProvider} from './providers/apps.js';
 import {AssistantsProvider} from './providers/assistants.js';
 import {CalculatorProvider} from './providers/calculator.js';
 import {CommandsProvider} from './providers/commands.js';
+import {DrivesProvider} from './providers/drives.js';
 import {FilesProvider} from './providers/files.js';
 import {LearningStore} from './providers/learning.js';
 import {WebProvider} from './providers/web.js';
@@ -28,7 +29,8 @@ export default class AskBarExtension extends Extension {
         this._apps = new AppsProvider(this._actions);
         this._windows = new WindowsProvider();
         this._calculator = new CalculatorProvider();
-        this._files = new FilesProvider(this._settings, this._actions);
+        this._drives = new DrivesProvider(this._settings);
+        this._files = new FilesProvider(this._settings, this._actions, this._drives);
         this._web = new WebProvider(this._settings, this.path);
         this._assistants = new AssistantsProvider();
         this._commands = new CommandsProvider({
@@ -39,7 +41,10 @@ export default class AskBarExtension extends Extension {
         this._bar = new AskBar({
             settings: this._settings,
             search: (parsed, cancellable) => this._search(parsed, cancellable),
-            onOpen: () => this._files.prefetch(),
+            onOpen: () => {
+                this._files.prefetch();
+                this._drives.refresh();
+            },
             onActivated: (parsed, result) => {
                 if (this._settings.get_boolean('learn-choices'))
                     this._learning.record(learningKey(parsed), result.id);
@@ -66,13 +71,13 @@ export default class AskBarExtension extends Extension {
         for (const provider of this._providers())
             provider.destroy();
         this._apps = this._windows = this._calculator = this._files = this._web = this._commands = null;
-        this._assistants = this._actions = this._learning = null;
+        this._assistants = this._actions = this._learning = this._drives = null;
         this._settings = null;
     }
 
     _providers() {
         return [this._apps, this._windows, this._calculator, this._files, this._web, this._commands,
-            this._assistants, this._actions, this._learning];
+            this._assistants, this._actions, this._learning, this._drives];
     }
 
     /**
@@ -96,7 +101,9 @@ export default class AskBarExtension extends Extension {
 
         switch (mode) {
         case MODES.FILES:
-            return this._files.search(query, cancellable).then(top);
+            // Unmounted drives go last: one Enter mounts them.
+            return this._files.search(query, cancellable)
+                .then(results => [...top(results), ...this._drives.unmounted()]);
         case MODES.COMMANDS:
             // Scores only order matches; keep the provider's order when empty.
             return this._commands.search(query).then(r => (query ? top(r) : r));
