@@ -28,6 +28,9 @@ from a single bar. Press **Alt+Space** and start typing.
 - **Math**: type `2340 * 1.15` and get the answer
 - **Web**: `!gh`, `!yt`, `!so` and other shortcuts, typed URLs, and a web
   search when nothing else matches
+- **Ask AI apps**: if Claude or ChatGPT is installed, "Ask Claude" and
+  "Ask ChatGPT" appear next to the web search, opening the app with your
+  question
 - **Keyboard first** and **configurable**: every source, the look and the
   shortcut can be changed in the settings
 
@@ -42,6 +45,7 @@ Press **Alt+Space**, type, then press **Enter**.
 | `/` | Run a command or developer tool |
 | `=` | Calculate |
 | `!` | Search a website: `!gh ask-bar`, `!yt lofi` |
+| `?` | Ask an installed AI app (Claude, ChatGPT) |
 
 | Key | Does |
 | --- | --- |

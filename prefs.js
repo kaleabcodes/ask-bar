@@ -64,6 +64,8 @@ function searchPage(settings) {
     const web = new Adw.PreferencesGroup({title: 'Web'});
     web.add(switchRow(settings, 'web-fallback', 'Offer a web search',
         'End results with "Search the web for …" and open typed URLs'));
+    web.add(switchRow(settings, 'ask-ai-apps', 'Ask AI apps',
+        'Offer “Ask Claude” / “Ask ChatGPT” when those apps are installed'));
     const engine = engineRow(settings);
     settings.bind('web-fallback', engine, 'sensitive', Gio.SettingsBindFlags.GET);
     web.add(engine);

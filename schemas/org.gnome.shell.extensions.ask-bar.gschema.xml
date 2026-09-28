@@ -73,6 +73,12 @@
       <description>Key of the web shortcut used for the web search fallback (e.g. g, ddg).</description>
     </key>
 
+    <key name="ask-ai-apps" type="b">
+      <default>true</default>
+      <summary>Ask AI apps</summary>
+      <description>Offer "Ask Claude" / "Ask ChatGPT" for installed AI desktop apps.</description>
+    </key>
+
     <!-- Files -->
     <key name="recent-files-count" type="i">
       <range min="0" max="30"/>

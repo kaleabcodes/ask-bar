@@ -6,6 +6,7 @@ import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
 import {MODES} from './core/parse.js';
 import {AppsProvider} from './providers/apps.js';
+import {AssistantsProvider} from './providers/assistants.js';
 import {CalculatorProvider} from './providers/calculator.js';
 import {CommandsProvider} from './providers/commands.js';
 import {FilesProvider} from './providers/files.js';
@@ -25,6 +26,7 @@ export default class AskBarExtension extends Extension {
         this._calculator = new CalculatorProvider();
         this._files = new FilesProvider(this._settings);
         this._web = new WebProvider(this._settings, this.path);
+        this._assistants = new AssistantsProvider();
         this._commands = new CommandsProvider({
             settings: this._settings,
             openPreferences: () => this.openPreferences(),
@@ -53,11 +55,13 @@ export default class AskBarExtension extends Extension {
         for (const provider of this._providers())
             provider.destroy();
         this._apps = this._windows = this._calculator = this._files = this._web = this._commands = null;
+        this._assistants = null;
         this._settings = null;
     }
 
     _providers() {
-        return [this._apps, this._windows, this._calculator, this._files, this._web, this._commands];
+        return [this._apps, this._windows, this._calculator, this._files, this._web, this._commands,
+            this._assistants];
     }
 
     /**
@@ -80,7 +84,10 @@ export default class AskBarExtension extends Extension {
         case MODES.MATH:
             return this._calculator.search(query, {forced: true});
         case MODES.AI:
-            return [comingSoon('Ask AI', 'starred-symbolic')];
+            if (!this._assistants.available)
+                return [notice('No AI app installed', 'Install Claude or ChatGPT to ask them from here', 'starred-symbolic')];
+            return query ? this._assistants.search(query)
+                : [notice('Ask AI', 'Type a question to ask an installed AI app', 'starred-symbolic')];
         }
 
         // Default mode: every enabled source ranked together; the web search
@@ -94,7 +101,11 @@ export default class AskBarExtension extends Extension {
             ...(on('search-commands') ? this._commands.searchQuick(query) : []),
             ...web.filter(r => r.score > 0),
         ];
-        const fallback = web.filter(r => r.score <= 0);
+        // Web search, then "Ask Claude / ChatGPT", always at the end.
+        const fallback = [
+            ...web.filter(r => r.score <= 0),
+            ...(on('ask-ai-apps') ? this._assistants.search(query) : []),
+        ];
         // With a query, drop matches far weaker than the best one (e.g. an
         // app whose description happens to contain the letters of "readme").
         const rank = results => {
@@ -118,11 +129,11 @@ export default class AskBarExtension extends Extension {
     }
 }
 
-function comingSoon(name, icon) {
+function notice(title, subtitle, icon) {
     return {
-        id: `soon:${name}`,
-        title: `${name} is coming soon`,
-        subtitle: 'For now, type without a prefix to search apps, files and commands',
+        id: `notice:${title}`,
+        title,
+        subtitle,
         kind: '',
         score: 0,
         createIcon: () => new St.Icon({icon_name: icon, icon_size: 32}),
