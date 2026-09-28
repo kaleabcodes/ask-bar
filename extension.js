@@ -24,7 +24,7 @@ export default class AskBarExtension extends Extension {
         this._windows = new WindowsProvider();
         this._calculator = new CalculatorProvider();
         this._files = new FilesProvider(this._settings);
-        this._web = new WebProvider(this._settings);
+        this._web = new WebProvider(this._settings, this.path);
         this._commands = new CommandsProvider({
             settings: this._settings,
             openPreferences: () => this.openPreferences(),

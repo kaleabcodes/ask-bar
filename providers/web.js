@@ -2,19 +2,34 @@
 // "Search the web for …" fallback at the end of the default search.
 
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import St from 'gi://St';
 
 import {bestScore} from '../core/fuzzy.js';
-import {asUrl, buildUrl, mergeBangs, parseBang} from '../core/web.js';
+import {DEFAULT_BANGS, asUrl, buildUrl, mergeBangs, parseBang} from '../core/web.js';
 
 const ICON_SIZE = 32;
 const URL_SCORE = 900;        // a typed URL is almost certainly what you want
 const FALLBACK_SCORE = -1000; // always last
 
 export class WebProvider {
-    /** @param {Gio.Settings} settings */
-    constructor(settings) {
+    /**
+     * @param {Gio.Settings} settings
+     * @param {string} extensionPath  for the bundled brand logos
+     */
+    constructor(settings, extensionPath) {
         this._settings = settings;
+        this._logos = loadLogos(`${extensionPath}/icons/brands`);
+    }
+
+    // The site's official logo for built-in shortcuts (a custom shortcut
+    // reusing a built-in key but another URL gets the generic icon).
+    _icon(bang) {
+        const builtin = DEFAULT_BANGS.some(d => d.key === bang?.key && d.url === bang?.url);
+        const gicon = builtin ? this._logos.get(bang.key) : null;
+        return gicon
+            ? new St.Icon({gicon, icon_size: ICON_SIZE})
+            : new St.Icon({icon_name: 'web-browser-symbolic', icon_size: ICON_SIZE});
     }
 
     /**
@@ -94,7 +109,7 @@ export class WebProvider {
             subtitle: `!${bang.key}  ·  ${hostOf(bang.url)}`,
             kind: 'Web',
             score,
-            createIcon: () => new St.Icon({icon_name: 'web-browser-symbolic', icon_size: ICON_SIZE}),
+            createIcon: () => this._icon(bang),
             activate: () => openUrl(url),
         };
     }
@@ -107,13 +122,29 @@ export class WebProvider {
             subtitle: `!${bang.key}  ·  ${hostOf(bang.url)}`,
             kind: 'Web',
             score,
-            createIcon: () => new St.Icon({icon_name: 'web-browser-symbolic', icon_size: ICON_SIZE}),
+            createIcon: () => this._icon(bang),
             activate: null,
             fill: `!${bang.key} `,
         };
     }
 
     destroy() {}
+}
+
+// Maps shortcut keys to logo files: "gh-symbolic.svg" or "yt.svg".
+// Symbolic logos (black brands) are recolored to the text color by GNOME.
+function loadLogos(dir) {
+    const logos = new Map();
+    for (const {key} of DEFAULT_BANGS) {
+        for (const name of [`${key}.svg`, `${key}-symbolic.svg`]) {
+            const path = `${dir}/${name}`;
+            if (GLib.file_test(path, GLib.FileTest.EXISTS)) {
+                logos.set(key, Gio.FileIcon.new(Gio.File.new_for_path(path)));
+                break;
+            }
+        }
+    }
+    return logos;
 }
 
 function openUrl(url) {

@@ -87,7 +87,9 @@ nothing is typed, the clipboard. The result is previewed, and Enter copies it.
 `!so` Stack Overflow · `!w` Wikipedia · `!mdn` MDN · `!npm` npm ·
 `!pypi` PyPI · `!maps` Google Maps
 
-Add your own, or replace these, in the settings.
+Add your own, or replace these, in the settings. Built-in shortcuts show
+each site's official logo, from [Simple Icons](https://simpleicons.org)
+(CC0); the logos remain trademarks of their owners.
 
 </details>
 
