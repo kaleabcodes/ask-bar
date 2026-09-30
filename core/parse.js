@@ -4,6 +4,7 @@
 //   "firefox"        -> {mode: 'all',      query: 'firefox'}
 //   "@readme"        -> {mode: 'files',    query: 'readme'}
 //   "/lock"          -> {mode: 'commands', query: 'lock'}
+//   "/help files"    -> {mode: 'help',     query: 'files'}
 //   "= 2 * 3"        -> {mode: 'math',     query: '2 * 3'}
 //   "!gh gnome"      -> {mode: 'web',      query: 'gh gnome'}
 //   "? what is dns"  -> {mode: 'ai',       query: 'what is dns'}
@@ -15,6 +16,7 @@ export const MODES = Object.freeze({
     MATH: 'math',
     WEB: 'web',
     AI: 'ai',
+    HELP: 'help',
 });
 
 const PREFIXES = new Map([
@@ -31,6 +33,9 @@ const PREFIXES = new Map([
  */
 export function parse(input) {
     const text = input.trimStart();
+    // Reserve only the complete command; /helper and /help/file stay intact.
+    if (/^\/help(?:\s|$)/i.test(text))
+        return {mode: MODES.HELP, prefix: '/help ', query: text.slice(5).trim()};
     const mode = PREFIXES.get(text[0]);
     // "/" followed by more path is a file path, not a command ("/usr/bin").
     if (mode === MODES.COMMANDS && text.slice(1).includes('/'))

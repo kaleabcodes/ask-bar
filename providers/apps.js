@@ -52,6 +52,11 @@ export class AppsProvider {
         return results;
     }
 
+    resolveFavorite(id) {
+        const app = this._appSystem.lookup_app(id.slice(4));
+        return app ? this._result(app, 0) : null;
+    }
+
     _getEntries() {
         if (!this._entries) {
             this._entries = this._appSystem.get_installed()
@@ -78,6 +83,7 @@ export class AppsProvider {
         const info = app.get_app_info();
         return {
             id: `app:${app.get_id()}`,
+            favorite: {id: `app:${app.get_id()}`, title: app.get_name()},
             title: app.get_name(),
             subtitle: info?.get_description() || info?.get_generic_name?.() || '',
             kind: app.state === Shell.AppState.RUNNING ? 'Running' : 'Application',

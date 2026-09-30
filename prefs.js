@@ -119,9 +119,9 @@ function appearancePage(settings) {
     resetRow.add_css_class('destructive-action');
     resetRow.connect('activated', () => {
         for (const key of settings.settings_schema.list_keys()) {
-            // Keep your commands and shortcuts; resetting clear-learning would
+            // Keep your favorites, commands and shortcuts; resetting clear-learning would
             // count as "forget" and wipe what was learned.
-            if (!key.startsWith('custom-') && key !== 'clear-learning')
+            if (!key.startsWith('custom-') && key !== 'clear-learning' && key !== 'pinned-favorites')
                 settings.reset(key);
         }
     });

@@ -12,6 +12,8 @@ import {CalculatorProvider} from './providers/calculator.js';
 import {CommandsProvider} from './providers/commands.js';
 import {DrivesProvider} from './providers/drives.js';
 import {FilesProvider} from './providers/files.js';
+import {FavoritesProvider} from './providers/favorites.js';
+import {helpEntry, helpResults} from './providers/help.js';
 import {LearningStore} from './providers/learning.js';
 import {WebProvider} from './providers/web.js';
 import {WindowsProvider} from './providers/windows.js';
@@ -36,6 +38,13 @@ export default class AskBarExtension extends Extension {
         this._commands = new CommandsProvider({
             settings: this._settings,
             openPreferences: () => this.openPreferences(),
+        });
+        this._favorites = new FavoritesProvider(this._settings, item => {
+            if (item.id.startsWith('app:'))
+                return this._apps.resolveFavorite(item.id);
+            if (item.id.startsWith('cmd:'))
+                return this._commands.resolveFavorite(item.id);
+            return this._files.resolveFavorite(item);
         });
 
         this._bar = new AskBar({
@@ -72,12 +81,13 @@ export default class AskBarExtension extends Extension {
             provider.destroy();
         this._apps = this._windows = this._calculator = this._files = this._web = this._commands = null;
         this._assistants = this._actions = this._learning = this._drives = null;
+        this._favorites = null;
         this._settings = null;
     }
 
     _providers() {
         return [this._apps, this._windows, this._calculator, this._files, this._web, this._commands,
-            this._assistants, this._actions, this._learning, this._drives];
+            this._assistants, this._actions, this._learning, this._drives, this._favorites];
     }
 
     /**
@@ -97,16 +107,18 @@ export default class AskBarExtension extends Extension {
             }
             return results;
         };
-        const top = results => learn(results).sort((a, b) => b.score - a.score).slice(0, limit);
+        const top = results => this._favorites.decorate(learn(results).sort((a, b) => b.score - a.score).slice(0, limit));
 
         switch (mode) {
+        case MODES.HELP:
+            return helpResults(query);
         case MODES.FILES:
             // Unmounted drives go last: one Enter mounts them.
             return this._files.search(query, cancellable)
                 .then(results => [...top(results), ...this._drives.unmounted()]);
         case MODES.COMMANDS:
             // Scores only order matches; keep the provider's order when empty.
-            return this._commands.search(query).then(r => (query ? top(r) : r));
+            return this._commands.search(query).then(r => (query ? top(r) : this._favorites.decorate(r)));
         case MODES.WEB:
             return this._web.search(query).slice(0, limit);
         case MODES.MATH:
@@ -121,6 +133,8 @@ export default class AskBarExtension extends Extension {
         // Default mode: every enabled source ranked together; the web search
         // fallback always stays last.
         const on = key => this._settings.get_boolean(key);
+        if (!query)
+            return [...this._favorites.home(on('search-apps') ? this._apps.search('') : [], limit), helpEntry()];
         const web = this._web.fallback(query);
         const instant = [
             ...(on('search-calculator') ? this._calculator.search(query) : []),
@@ -139,7 +153,7 @@ export default class AskBarExtension extends Extension {
         const rank = results => {
             const sorted = learn(results).sort((a, b) => b.score - a.score);
             const best = sorted[0]?.score ?? 0;
-            return (query ? sorted.filter(r => r.score >= best * RELATIVE_CUTOFF) : sorted).slice(0, limit);
+            return this._favorites.decorate((query ? sorted.filter(r => r.score >= best * RELATIVE_CUTOFF) : sorted).slice(0, limit));
         };
         const rankWithFallback = results => {
             const ranked = rank(results);

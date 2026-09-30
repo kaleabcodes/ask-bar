@@ -11,9 +11,10 @@ export const ResultRow = GObject.registerClass(
 class ResultRow extends St.Button {
     /**
      * @param {import('../providers/types.js').Result} result
-     * @param {{compact?: boolean}} [options]  compact: smaller icon, no subtitle
+     * @param {{compact?: boolean, wrapSubtitle?: boolean}} [options]
+     *     compact: smaller icon, no subtitle; wrapSubtitle: show full instructions
      */
-    _init(result, {compact = false} = {}) {
+    _init(result, {compact = false, wrapSubtitle = false} = {}) {
         super._init({
             style_class: 'ab-row',
             track_hover: true,
@@ -38,7 +39,9 @@ class ResultRow extends St.Button {
         text.add_child(title);
         if (result.subtitle && !compact) {
             const subtitle = new St.Label({text: result.subtitle, style_class: 'ab-row-subtitle'});
-            subtitle.clutter_text.ellipsize = Pango.EllipsizeMode.END;
+            subtitle.clutter_text.ellipsize = wrapSubtitle ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END;
+            subtitle.clutter_text.line_wrap = wrapSubtitle;
+            subtitle.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
             text.add_child(subtitle);
         }
         box.add_child(text);

@@ -19,6 +19,11 @@ from a single bar. Press **Alt+Space** and start typing.
 
 ## Features
 
+- **Pinned favorites**: pin apps, files, projects and commands with
+  **Alt+Enter**. They appear first when the bar opens with an empty search,
+  in the order you pinned them. Use the same menu to unpin
+- **Built-in help**: type `/help` to browse tips and examples, or
+  `/help files` to find a topic. Enter or Tab fills in an example to try
 - **Apps and windows**: fuzzy search; your most-used apps rank first
 - **Files and projects**: your home folder (GNOME's file index), your
   **git repositories** (which GNOME doesn't index), **other drives and USB
@@ -52,6 +57,7 @@ Press **Alt+Space**, type, then press **Enter**.
 | *(anything)* | Search apps, windows, files, commands; fall back to the web |
 | `@` | Search files and folders (a bare `@` lists recent files) |
 | `/` | Run a command or developer tool |
+| `/help` | Browse searchable help (`/help keyboard`, `/help json`) |
 | `=` | Calculate |
 | `!` | Search a website: `!gh ask-bar`, `!yt lofi` |
 | `?` | Ask an installed AI app (Claude, ChatGPT) |
@@ -62,8 +68,18 @@ Press **Alt+Space**, type, then press **Enter**.
 | Enter | Open or run |
 | Ctrl+Enter | Show a file in Files |
 | Alt+Enter | Actions: open in editor or terminal, on GitHub, copy path… (Esc to go back) |
-| Tab | Complete a web shortcut |
+| Tab | Complete a web shortcut or fill a help example |
 | Esc | Close |
+
+Favorites are saved locally and survive restarts and settings resets.
+Pinned developer tools reopen their command with fresh input; clipboard
+contents and generated output are never saved in favorites. If an app or
+custom command is removed, its pin stays available to unpin. File pins
+refer to their original path; if a file moves, unpin it and pin its new location.
+Pinned items remain visible even when their default search source is off.
+All pins are reachable by scrolling, including when they exceed the maximum
+search results setting. With **Remember last search** enabled, clear the
+search to see your favorites.
 
 <table>
 <tr>
@@ -77,6 +93,7 @@ Press **Alt+Space**, type, then press **Enter**.
 
 | Command | Does |
 | --- | --- |
+| `/help` | Search tips, keyboard shortcuts and examples; select an example to fill the bar |
 | `/lock` `/suspend` `/logout` `/restart` `/shutdown` | Session actions (log out, restart and power off ask for confirmation) |
 | `/dark` `/nightlight` `/dnd` | Toggle dark mode, Night Light, Do Not Disturb |
 | `/screenshot` `/settings` `/askbar` | Screenshot tool, GNOME Settings, Ask Bar settings |

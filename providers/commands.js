@@ -31,7 +31,8 @@ const RELATIVE_CUTOFF = 0.5;     // drop matches scoring under half the best
  * @property {string} title
  * @property {string} keywords
  * @property {string} icon
- * @property {'System'|'Developer'|'Custom'} kind
+ * @property {'System'|'Developer'|'Custom'|'Help'} kind
+ * @property {string} [fill]                          fill the bar instead of running
  * @property {string} [description]                   subtitle when there's no preview
  * @property {(input: string, ctx: object) => Promise<{output: string, detail?: string}>} [transform]
  * @property {'arg'|'arg-or-clipboard'} [input]       where a transform's text comes from
@@ -46,7 +47,11 @@ export class CommandsProvider {
      */
     constructor({settings, openPreferences}) {
         this._settings = settings;
-        this._builtins = [...systemCommands(openPreferences), ...devCommands()];
+        this._builtins = [{
+            name: 'help', title: 'Ask Bar Help', keywords: 'help tips guide shortcuts examples',
+            icon: 'help-browser-symbolic', kind: 'Help',
+            description: 'Search tips, keyboard shortcuts and examples', fill: '/help ',
+        }, ...systemCommands(openPreferences), ...devCommands()];
     }
 
     /**
@@ -101,6 +106,16 @@ export class CommandsProvider {
         return [...this._builtins, ...customCommands(this._settings)];
     }
 
+    resolveFavorite(id) {
+        const command = this._commands().find(c => `cmd:${c.name}` === id);
+        if (!command)
+            return null;
+        if (!command.transform)
+            return this._actionResult(command, 0);
+        // Resolve the tool again when opened; never replay an old preview.
+        return {...this._toolResult(command, 0, null), fill: `/${command.name} `};
+    }
+
     _match(name) {
         const results = [];
         for (const command of this._commands()) {
@@ -121,12 +136,14 @@ export class CommandsProvider {
     _actionResult(command, score) {
         return {
             id: `cmd:${command.name}`,
+            favorite: command.fill ? undefined : {id: `cmd:${command.name}`, title: command.title},
             title: command.title,
             subtitle: command.description ?? `/${command.name}`,
             kind: command.kind,
             score,
             createIcon: () => commandIcon(command.icon),
-            activate: () => command.run(),
+            fill: command.fill,
+            activate: command.run ? () => command.run() : null,
         };
     }
 
@@ -146,6 +163,7 @@ export class CommandsProvider {
         const canCopy = preview?.output !== undefined;
         return {
             id: `cmd:${command.name}`,
+            favorite: {id: `cmd:${command.name}`, title: command.title},
             title: command.title,
             subtitle,
             kind: command.kind,

@@ -1,7 +1,7 @@
 {
   "uuid": "ask-bar@kaleabcodes.dev",
   "name": "Ask Bar",
-  "description": "One shortcut to search everything: apps, windows, files and git projects, commands, developer tools (JSON, JWT, Base64, UUID\u2026), math and web shortcuts. Press Alt+Space.",
+  "description": "One shortcut to search everything: apps, windows, files and git projects, commands, developer tools (JSON, JWT, Base64, UUID\u2026), math and web shortcuts. Pin favorites with Alt+Enter and discover features with /help. Press Alt+Space.",
   "shell-version": [
     "48",
     "49",
@@ -9,5 +9,5 @@
   ],
   "settings-schema": "org.gnome.shell.extensions.ask-bar",
   "url": "https://github.com/kaleabcodes/ask-bar",
-  "version-name": "1.0"
+  "version-name": "1.2"
 }

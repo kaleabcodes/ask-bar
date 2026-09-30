@@ -14,6 +14,9 @@
  * @property {() => Result[]} [actions]     Alt+Enter action list (open in editor, …)
  * @property {string} [fill]                 Enter/Tab puts this text in the bar instead
  *                                           of closing (e.g. "!gh ")
+ * @property {{id: string, title: string, isFolder?: boolean, isProject?: boolean}} [favorite]
+ *                                           stable reference saved when pinned
+ * @property {boolean} [keepOpen]             run an action, then refresh without closing
  */
 
 export {};

@@ -17,7 +17,7 @@ import {isCancelled} from '../lib/async.js';
 import {ResultRow} from './resultRow.js';
 
 const ANIMATION_MS = 120;
-const HINT = 'Ask anything, @ files, / commands, = math';
+const HINT = 'Search anything · /help for tips';
 
 const MODE_INFO = {
     [MODES.ALL]: {icon: 'system-search-symbolic', chip: null},
@@ -26,6 +26,7 @@ const MODE_INFO = {
     [MODES.MATH]: {icon: 'accessories-calculator-symbolic', chip: 'Math'},
     [MODES.WEB]: {icon: 'web-browser-symbolic', chip: 'Web'},
     [MODES.AI]: {icon: 'starred-symbolic', chip: 'Ask AI'},
+    [MODES.HELP]: {icon: 'help-browser-symbolic', chip: 'Help'},
 };
 
 export const AskBar = GObject.registerClass(
@@ -266,9 +267,10 @@ class AskBar extends St.Widget {
         const selectedId = this._userSelected ? this._results[this._selected]?.id : null;
         this._results = results;
         this._list.destroy_all_children();
-        const compact = this._settings.get_boolean('compact-mode');
+        // Help descriptions are the instructions, including in compact mode.
+        const compact = mode !== MODES.HELP && this._settings.get_boolean('compact-mode');
         this._rows = results.map((result, index) => {
-            const row = new ResultRow(result, {compact});
+            const row = new ResultRow(result, {compact, wrapSubtitle: mode === MODES.HELP});
             row.connect('notify::hover', () => {
                 if (row.hover) {
                     this._userSelected = true;
@@ -288,6 +290,7 @@ class AskBar extends St.Widget {
     _select(index, scroll = true) {
         if (this._rows.length === 0) {
             this._selected = 0;
+            this._actionsHint.visible = this._altHint.visible = this._fillHint.visible = false;
             return;
         }
         this._rows[this._selected]?.setSelected(false);
@@ -313,6 +316,18 @@ class AskBar extends St.Widget {
         const action = alternate ? result?.altActivate : result?.activate;
         if (!action)
             return;
+        if (result.keepOpen) {
+            try {
+                action();
+                if (this._actionsFor)
+                    this._closeActions();
+                else
+                    this._update();
+            } catch (e) {
+                Main.notifyError('Could not update favorites', e.message);
+            }
+            return;
+        }
         // In the action list, the choice to learn is the item it was opened for.
         if (this._actionsFor)
             this._onActivated(parse(this._actionsFor.savedText), this._actionsFor.result);
@@ -329,6 +344,9 @@ class AskBar extends St.Widget {
         const result = this._results[index];
         if (!result?.actions || this._actionsFor)
             return;
+        // Late file results must not replace the action list while it is open.
+        this._cancelSearch();
+        ++this._generation;
         this._actionsFor = {result, actions: result.actions(), savedText: this._entry.text};
         this._modeIcon.icon_name = 'view-more-symbolic';
         this._chip.text = 'Actions';

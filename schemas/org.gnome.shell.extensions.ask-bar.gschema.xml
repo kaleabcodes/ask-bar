@@ -149,6 +149,11 @@
     </key>
 
     <!-- Custom lists (JSON) -->
+    <key name="pinned-favorites" type="s">
+      <default>'[]'</default>
+      <summary>Pinned favorites</summary>
+      <description>Ordered JSON list of pinned app, file, project and command references.</description>
+    </key>
     <key name="custom-commands" type="s">
       <default>'[]'</default>
       <summary>Custom commands</summary>

@@ -9,6 +9,7 @@
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {
     basename, displayFolder, parseLocalsearch, parseRecentFiles, pathToUri, scorePath,
@@ -179,10 +180,16 @@ export class FilesProvider {
         }
     }
 
+    resolveFavorite(item) {
+        // Avoid filesystem I/O on the shell thread, including disconnected drives.
+        return this._result(item.id.slice(5), 0, item);
+    }
+
     _result(path, score, {isFolder, isProject, kind = null}) {
         const uri = pathToUri(path);
         return {
             id: `file:${path}`,
+            favorite: {id: `file:${path}`, title: basename(path), isFolder, isProject},
             title: basename(path),
             subtitle: displayFolder(path, this._home),
             kind: kind ?? (isProject ? 'Project' : isFolder ? 'Folder' : 'File'),
@@ -210,7 +217,13 @@ function iconFor(path, isFolder, isProject) {
 }
 
 function openUri(uri) {
-    Gio.AppInfo.launch_default_for_uri_async(uri, global.create_app_launch_context(0, -1), null, null);
+    Gio.AppInfo.launch_default_for_uri_async(uri, global.create_app_launch_context(0, -1), null, (_source, result) => {
+        try {
+            Gio.AppInfo.launch_default_for_uri_finish(result);
+        } catch (e) {
+            Main.notifyError('Could not open file', e.message);
+        }
+    });
 }
 
 // Opens the containing folder with the item selected (Files' D-Bus API).
