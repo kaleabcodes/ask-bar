@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.3
+
+- If a search fails, the bar opens and shows the error. Before, Alt+Space could
+  seem to do nothing while the hidden bar kept the keyboard.
+- Restore the "Ask anything, @ files, / commands, = math" placeholder.
+
 ## 1.2
 
 - Pin apps, files, projects and commands from their Alt+Enter actions. Favorites
