@@ -17,7 +17,7 @@ import {isCancelled} from '../lib/async.js';
 import {ResultRow} from './resultRow.js';
 
 const ANIMATION_MS = 120;
-const HINT = 'Search anything · /help for tips';
+const HINT = 'Ask anything, @ files, / commands, = math';
 
 const MODE_INFO = {
     [MODES.ALL]: {icon: 'system-search-symbolic', chip: null},
