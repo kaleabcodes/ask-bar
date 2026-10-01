@@ -18,7 +18,7 @@ for f in *.js core/*.js providers/*.js ui/*.js; do cp "$f" /tmp/x.mjs && node --
 ./pack.sh [ver]     # dist/<uuid>.shell-extension.zip
 ```
 
-`install.sh` and `pack.sh` copy whole folders (`core lib providers ui schemas`); a new top-level file or folder must be added to both. The running Wayland shell never reloads extension JS, so test in a nested or headless shell, or log out.
+`install.sh` and `pack.sh` copy whole folders (`core lib providers ui schemas`); a new top-level file or folder must be added to both. The running Wayland shell never reloads extension JS, so test in a nested or headless shell, or log out. `schemas/gschemas.compiled` is git-ignored: after a pull or a schema change, run `glib-compile-schemas schemas/` (or `./install.sh`), or a new key throws "GSettings key … not found" when the bar opens. Run headless shells under `dbus-run-session`; otherwise the driver's keystrokes reach the real desktop.
 
 ## Architecture
 

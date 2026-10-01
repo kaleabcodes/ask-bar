@@ -224,7 +224,15 @@ class AskBar extends St.Widget {
         this._cancelSearch();
         const generation = ++this._generation;
         this._cancellable = new Gio.Cancellable();
-        const results = this._search(parsed, this._cancellable);
+        let results;
+        try {
+            results = this._search(parsed, this._cancellable);
+        } catch (e) {
+            // Show the error rather than leave an invisible bar holding the grab.
+            console.error(e);
+            this._setResults([errorRow(e.message)], parsed.mode);
+            return;
+        }
         if (results?.more instanceof Promise) {
             // Instant results now; the complete list replaces them when ready.
             this._setResults(results.results, parsed.mode);
