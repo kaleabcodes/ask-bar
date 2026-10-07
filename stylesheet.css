@@ -120,6 +120,19 @@
   color: rgba(255, 255, 255, 0.35);
 }
 
+/* An emoji or symbol shown in place of the icon (":" mode). */
+.ab-glyph {
+  font-size: 20pt;
+  min-width: 32px;
+  text-align: center;
+  color: #f6f5f4;
+}
+
+.ab-compact .ab-glyph {
+  font-size: 14pt;
+  min-width: 22px;
+}
+
 /* ── Footer ────────────────────────────────────────────── */
 
 .ab-footer {
@@ -225,6 +238,10 @@
 }
 
 .ab-light .ab-row StIcon {
+  color: #1e1e22;
+}
+
+.ab-light .ab-glyph {
   color: #1e1e22;
 }
 

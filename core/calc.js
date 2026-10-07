@@ -2,7 +2,10 @@
 // Pure JavaScript, unit-tested with Node.
 //
 // Supports + - * / % ^ (power), parentheses, unary minus, "×" and "÷",
-// constants pi and e, and the functions below.
+// constants pi and e, and the functions below. Also percentages ("20% of
+// 80", "80 + 20%", "15%" of the left operand) and hexadecimal, binary and
+// octal literals ("0xff + 1", "0b1010"). A "%" followed by a value is
+// still the modulo operator ("10 % 4").
 
 const FUNCTIONS = {
     sqrt: Math.sqrt, cbrt: Math.cbrt, abs: Math.abs,
@@ -16,6 +19,7 @@ const FUNCTIONS = {
 const CONSTANTS = {pi: Math.PI, e: Math.E};
 
 const OPERATOR = /[+\-*/%^×÷]/;
+const BASE_LITERAL = /\b0[xbo][0-9a-f]+\b/i;
 
 /**
  * Whether the text is worth evaluating as math without an "=" prefix:
@@ -30,8 +34,8 @@ export function looksLikeMath(text) {
     if (!/\d/.test(t) || !/^[\d\s.+\-*/%^()×÷,a-z]+$/i.test(t))
         return false;
     const hasFunction = Object.keys(FUNCTIONS).some(f => new RegExp(`\\b${f}\\s*\\(`, 'i').test(t));
-    const hasOperator = OPERATOR.test(t.replace(/^[-+]/, ''));
-    if (!hasFunction && !hasOperator)
+    const hasOperator = OPERATOR.test(t.replace(/^[-+]/, '')) || /\bof\b/.test(t);
+    if (!hasFunction && !hasOperator && !BASE_LITERAL.test(t))
         return false;
     try {
         evaluate(t);
@@ -57,23 +61,43 @@ export function evaluate(expression) {
             throw new Error(`Expected "${value}"`);
     };
 
+    // A "%" is modulo when a value follows it ("10 % 4"); otherwise it is
+    // a percent sign ("20%", "20% of 80", "80 + 20%").
+    const isModulo = at => {
+        const after = tokens[at + 1];
+        return typeof after === 'number' || after === '(' ||
+            (typeof after === 'string' && /^[a-z]/.test(after) && after !== 'of');
+    };
+
     // expression := term (("+" | "-") term)*
+    // "80 + 20%" adds 20% of 80; "80 - 20%" subtracts it.
     function parseExpression() {
         let value = parseTerm();
-        while (peek() === '+' || peek() === '-')
-            value = next() === '+' ? value + parseTerm() : value - parseTerm();
+        while (peek() === '+' || peek() === '-') {
+            const op = next();
+            const start = pos;
+            const rhs = parseTerm();
+            const relative = tokens[pos - 1] === '%' && pos - start === 2 && typeof tokens[start] === 'number';
+            const amount = relative ? value * rhs : rhs;
+            value = op === '+' ? value + amount : value - amount;
+        }
         return value;
     }
 
-    // term := unary (("*" | "/" | "%") unary)*
+    // term := unary (("*" | "/" | "%" | "of") unary)*
     function parseTerm() {
         let value = parseUnary();
-        while (peek() === '*' || peek() === '/' || peek() === '%') {
-            const op = next();
+        for (;;) {
+            const op = peek();
+            if (op === '%' && !isModulo(pos))
+                break;
+            if (op !== '*' && op !== '/' && op !== '%' && op !== 'of')
+                break;
+            next();
             const rhs = parseUnary();
             if ((op === '/' || op === '%') && rhs === 0)
                 throw new Error('Division by zero');
-            value = op === '*' ? value * rhs : op === '/' ? value / rhs : value % rhs;
+            value = op === '*' || op === 'of' ? value * rhs : op === '/' ? value / rhs : value % rhs;
         }
         return value;
     }
@@ -91,14 +115,24 @@ export function evaluate(expression) {
         return parsePower();
     }
 
-    // power := primary ("^" unary)?   (right-associative: 2^3^2 = 2^9)
+    // power := percent ("^" unary)?   (right-associative: 2^3^2 = 2^9)
     function parsePower() {
-        const base = parsePrimary();
+        const base = parsePercent();
         if (peek() === '^') {
             next();
             return base ** parseUnary();
         }
         return base;
+    }
+
+    // percent := primary "%"*   (a trailing percent sign divides by 100)
+    function parsePercent() {
+        let value = parsePrimary();
+        while (peek() === '%' && !isModulo(pos)) {
+            next();
+            value /= 100;
+        }
+        return value;
     }
 
     // primary := number | constant | function "(" args ")" | "(" expression ")"
@@ -158,6 +192,16 @@ function tokenize(expression) {
         if (/\s/.test(ch)) {
             i++;
         } else if (/[\d.]/.test(ch)) {
+            const literal = /^0([xbo])([0-9a-f]+)/.exec(src.slice(i));
+            if (literal) {
+                const radix = {x: 16, b: 2, o: 8}[literal[1]];
+                const value = Number.parseInt(literal[2], radix);
+                if (Number.isNaN(value) || literal[2] !== value.toString(radix).padStart(literal[2].length, '0'))
+                    throw new Error(`Invalid number "${literal[0]}"`);
+                tokens.push(value);
+                i += literal[0].length;
+                continue;
+            }
             const match = /^(\d+\.?\d*|\.\d+)(e[+-]?\d+)?/.exec(src.slice(i));
             if (!match)
                 throw new Error(`Invalid number at "${src.slice(i)}"`);

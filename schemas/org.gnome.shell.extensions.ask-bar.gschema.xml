@@ -44,7 +44,17 @@
     <key name="search-calculator" type="b">
       <default>true</default>
       <summary>Calculator</summary>
-      <description>Answer math expressions in the default search.</description>
+      <description>Answer math expressions and unit conversions in the default search.</description>
+    </key>
+    <key name="search-currency" type="b">
+      <default>true</default>
+      <summary>Convert currencies</summary>
+      <description>Convert currencies ("$20 in eur") with daily exchange rates fetched from open.er-api.com and cached for 12 hours.</description>
+    </key>
+    <key name="search-settings" type="b">
+      <default>true</default>
+      <summary>Search GNOME Settings panels</summary>
+      <description>Include GNOME Settings panels (Wi-Fi, Displays, …) in the default search.</description>
     </key>
     <key name="search-commands" type="b">
       <default>true</default>
@@ -77,6 +87,19 @@
       <default>true</default>
       <summary>Ask AI apps</summary>
       <description>Offer "Ask Claude" / "Ask ChatGPT" for installed AI desktop apps.</description>
+    </key>
+
+    <!-- Clipboard history (/clip); kept in memory only -->
+    <key name="clipboard-history" type="b">
+      <default>true</default>
+      <summary>Clipboard history</summary>
+      <description>Remember text you copy for the /clip search. Kept in memory only and cleared on logout.</description>
+    </key>
+    <key name="clipboard-history-size" type="i">
+      <range min="5" max="200"/>
+      <default>50</default>
+      <summary>Clipboard history size</summary>
+      <description>How many copied texts to remember.</description>
     </key>
 
     <key name="learn-choices" type="b">

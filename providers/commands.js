@@ -36,6 +36,7 @@ const RELATIVE_CUTOFF = 0.5;     // drop matches scoring under half the best
  * @property {string} [description]                   subtitle when there's no preview
  * @property {(input: string, ctx: object) => Promise<{output: string, detail?: string}>} [transform]
  * @property {'arg'|'arg-or-clipboard'} [input]       where a transform's text comes from
+ * @property {boolean} [sensitive]                    output must not enter the clipboard history
  * @property {() => void} [run]                       for actions
  */
 
@@ -44,14 +45,25 @@ export class CommandsProvider {
      * @param {object} params
      * @param {Gio.Settings} params.settings
      * @param {() => void} params.openPreferences
+     * @param {(text: string) => void} [params.excludeFromClipboard]  keeps generated
+     *     passwords out of the clipboard history
      */
-    constructor({settings, openPreferences}) {
+    constructor({settings, openPreferences, excludeFromClipboard = () => {}}) {
         this._settings = settings;
+        this._excludeFromClipboard = excludeFromClipboard;
         this._builtins = [{
             name: 'help', title: 'Ask Bar Help', keywords: 'help tips guide shortcuts examples',
             icon: 'help-browser-symbolic', kind: 'Help',
             description: 'Search tips, keyboard shortcuts and examples', fill: '/help ',
-        }, ...systemCommands(openPreferences), ...devCommands()];
+        }, {
+            name: 'clip', title: 'Clipboard History', keywords: 'clipboard history paste copied recent',
+            icon: 'edit-paste-symbolic', kind: 'System',
+            description: 'Search what you copied recently; Enter copies it again', fill: '/clip ',
+        }, ...systemCommands(openPreferences), ...devCommands(), {
+            name: 'rank', title: 'Explain Ranking', keywords: 'rank ranking debug score order why results',
+            icon: 'view-sort-descending-symbolic', kind: 'Developer',
+            description: 'Show how the default search scores a query, e.g. /rank fire', fill: '/rank ',
+        }];
     }
 
     /**
@@ -169,7 +181,11 @@ export class CommandsProvider {
             kind: command.kind,
             score,
             createIcon: () => commandIcon(command.icon),
-            activate: canCopy ? () => copy(preview.output, command.title) : null,
+            activate: canCopy ? () => {
+                if (command.sensitive)
+                    this._excludeFromClipboard(preview.output);
+                copy(preview.output, command.title);
+            } : null,
         };
     }
 
@@ -285,7 +301,7 @@ function devCommands() {
         tool('uuid', 'Generate UUID', 'uuid guid random id', 'view-refresh-symbolic',
             async () => ({output: uuidV4(await randomBytes(16))}), {input: 'arg'}),
         tool('password', 'Generate Password', 'password random secret', 'dialog-password-symbolic',
-            async () => ({output: password(await randomBytes(128), PASSWORD_LENGTH)}), {input: 'arg'}),
+            async () => ({output: password(await randomBytes(128), PASSWORD_LENGTH)}), {input: 'arg', sensitive: true}),
         tool('sha256', 'SHA-256 Hash', 'sha256 hash checksum', 'security-high-symbolic', hash(GLib.ChecksumType.SHA256)),
         tool('sha1', 'SHA-1 Hash', 'sha1 hash checksum', 'security-medium-symbolic', hash(GLib.ChecksumType.SHA1)),
         tool('md5', 'MD5 Hash', 'md5 hash checksum', 'security-low-symbolic', hash(GLib.ChecksumType.MD5)),

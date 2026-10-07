@@ -11,7 +11,7 @@ const RELATED_WEIGHT = 0.5; // a longer or shorter version of it ("te" vs "ter")
 const MAX_QUERIES = 300;
 
 // Results whose ids aren't stable across sessions or queries aren't learned.
-const UNLEARNED = /^(window|web|url|calc|notice|status|ai|soon):/;
+const UNLEARNED = /^(window|web|url|calc|notice|status|ai|soon|clip|rank):/;
 
 export function normalizeQuery(query) {
     return query.trim().toLowerCase().replace(/\s+/g, ' ');

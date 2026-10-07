@@ -37,7 +37,7 @@ function generalPage(settings) {
 
     const tips = new Adw.PreferencesGroup({
         title: 'Prefixes',
-        description: '@ files and folders  ·  / commands  ·  = math  ·  ! web shortcuts',
+        description: '@ files and folders  ·  / commands  ·  = math and conversions  ·  ! web shortcuts  ·  : emoji  ·  /clip clipboard',
     });
     page.add(tips);
     return page;
@@ -52,7 +52,12 @@ function searchPage(settings) {
     });
     sources.add(switchRow(settings, 'search-apps', 'Apps', null));
     sources.add(switchRow(settings, 'search-windows', 'Open windows', null));
-    sources.add(switchRow(settings, 'search-calculator', 'Calculator', 'Answer math like 2340 * 1.15'));
+    sources.add(switchRow(settings, 'search-calculator', 'Calculator', 'Math like 2340 * 1.15, units like 10 km in mi, 255 to hex'));
+    const currency = switchRow(settings, 'search-currency', 'Currency conversion',
+        'Like $20 in eur; fetches daily rates from open.er-api.com');
+    settings.bind('search-calculator', currency, 'sensitive', Gio.SettingsBindFlags.GET);
+    sources.add(currency);
+    sources.add(switchRow(settings, 'search-settings', 'GNOME Settings panels', 'Like "wifi" or "displays"'));
     sources.add(switchRow(settings, 'search-commands', 'Commands', 'System and custom commands, like "lock"'));
     const files = switchRow(settings, 'search-files', 'Files', 'The best file and project matches');
     sources.add(files);
@@ -60,6 +65,14 @@ function searchPage(settings) {
     settings.bind('search-files', fileCount, 'sensitive', Gio.SettingsBindFlags.GET);
     sources.add(fileCount);
     page.add(sources);
+
+    const clipboard = new Adw.PreferencesGroup({title: 'Clipboard history (/clip)'});
+    clipboard.add(switchRow(settings, 'clipboard-history', 'Remember copied text',
+        'Kept in memory only: nothing is saved to disk, and it is cleared when you log out'));
+    const clipSize = spinRow(settings, 'clipboard-history-size', 'Entries to keep', null, 5, 200, 5);
+    settings.bind('clipboard-history', clipSize, 'sensitive', Gio.SettingsBindFlags.GET);
+    clipboard.add(clipSize);
+    page.add(clipboard);
 
     const web = new Adw.PreferencesGroup({title: 'Web'});
     web.add(switchRow(settings, 'web-fallback', 'Offer a web search',

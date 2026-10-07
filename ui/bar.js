@@ -23,10 +23,12 @@ const MODE_INFO = {
     [MODES.ALL]: {icon: 'system-search-symbolic', chip: null},
     [MODES.FILES]: {icon: 'folder-symbolic', chip: 'Files'},
     [MODES.COMMANDS]: {icon: 'utilities-terminal-symbolic', chip: 'Commands'},
-    [MODES.MATH]: {icon: 'accessories-calculator-symbolic', chip: 'Math'},
+    [MODES.MATH]: {icon: 'accessories-calculator-symbolic', chip: 'Math', enter: 'Copy'},
     [MODES.WEB]: {icon: 'web-browser-symbolic', chip: 'Web'},
     [MODES.AI]: {icon: 'starred-symbolic', chip: 'Ask AI'},
     [MODES.HELP]: {icon: 'help-browser-symbolic', chip: 'Help'},
+    [MODES.EMOJI]: {icon: 'face-smile-symbolic', chip: 'Emoji', enter: 'Copy'},
+    [MODES.CLIPBOARD]: {icon: 'edit-paste-symbolic', chip: 'Clipboard', enter: 'Copy'},
 };
 
 export const AskBar = GObject.registerClass(
@@ -102,8 +104,9 @@ class AskBar extends St.Widget {
         this._panel.add_child(this._scroll);
 
         const footer = new St.BoxLayout({style_class: 'ab-footer'});
-        for (const [key, action] of [['↑↓', 'Navigate'], ['Enter', 'Open'], ['Esc', 'Close']])
-            addHint(footer, key, action);
+        addHint(footer, '↑↓', 'Navigate');
+        this._enterHintLabel = addHint(footer, 'Enter', 'Open');
+        addHint(footer, 'Esc', 'Close');
         // Shown when the selected result has a Ctrl+Enter action.
         this._altHint = new St.BoxLayout({visible: false});
         this._altHintLabel = addHint(this._altHint, 'Ctrl+Enter', '');
@@ -220,6 +223,7 @@ class AskBar extends St.Widget {
         this._modeIcon.icon_name = info.icon;
         this._chip.visible = info.chip !== null;
         this._chip.text = info.chip ?? '';
+        this._enterHintLabel.text = info.enter ?? 'Open';
 
         this._cancelSearch();
         const generation = ++this._generation;
@@ -358,6 +362,7 @@ class AskBar extends St.Widget {
         this._actionsFor = {result, actions: result.actions(), savedText: this._entry.text};
         this._modeIcon.icon_name = 'view-more-symbolic';
         this._chip.text = 'Actions';
+        this._enterHintLabel.text = 'Run';
         this._chip.visible = true;
         this._entry.hint_text = `Actions for ${result.title}`;
         this._entry.text = ''; // runs _update, which shows the actions
