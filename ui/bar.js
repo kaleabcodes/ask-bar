@@ -17,7 +17,7 @@ import {isCancelled} from '../lib/async.js';
 import {ResultRow} from './resultRow.js';
 
 const ANIMATION_MS = 120;
-const HINT = 'Ask anything, @ files, / commands, = math';
+const HINT = 'Search apps, files, commands…';
 
 const MODE_INFO = {
     [MODES.ALL]: {icon: 'system-search-symbolic', chip: null},
@@ -83,6 +83,7 @@ class AskBar extends St.Widget {
         this._chip = new St.Label({style_class: 'ab-chip', visible: false, y_align: Clutter.ActorAlign.CENTER});
         this._entry = new St.Entry({
             style_class: 'ab-entry',
+            accessible_name: 'Ask Bar search. Type /help for tips and keyboard shortcuts.',
             hint_text: HINT,
             can_focus: true,
             x_expand: true,
@@ -105,22 +106,28 @@ class AskBar extends St.Widget {
 
         const footer = new St.BoxLayout({style_class: 'ab-footer'});
         addHint(footer, '↑↓', 'Navigate');
-        this._enterHintLabel = addHint(footer, 'Enter', 'Open');
-        addHint(footer, 'Esc', 'Close');
+        this._enterHint = new St.BoxLayout();
+        this._enterHintLabel = addHint(this._enterHint, 'Enter', 'Open');
+        footer.add_child(this._enterHint);
+        this._escapeHintLabel = addHint(footer, 'Esc', 'Close');
+        const contextHints = new St.BoxLayout({style_class: 'ab-context-hints'});
         // Shown when the selected result has a Ctrl+Enter action.
         this._altHint = new St.BoxLayout({visible: false});
         this._altHintLabel = addHint(this._altHint, 'Ctrl+Enter', '');
-        footer.add_child(this._altHint);
+        contextHints.add_child(this._altHint);
         // Shown when the selected result has an Alt+Enter action list.
         this._actionsHint = new St.BoxLayout({visible: false});
         addHint(this._actionsHint, 'Alt+Enter', 'Actions');
-        footer.add_child(this._actionsHint);
+        contextHints.add_child(this._actionsHint);
         // Shown when Tab completes the selected result (e.g. "!gh ").
         this._fillHint = new St.BoxLayout({visible: false});
         addHint(this._fillHint, 'Tab', 'Complete');
-        footer.add_child(this._fillHint);
-        this._footer = footer;
-        this._panel.add_child(footer);
+        contextHints.add_child(this._fillHint);
+        this._contextHints = contextHints;
+        this._footer = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL});
+        this._footer.add_child(footer);
+        this._footer.add_child(contextHints);
+        this._panel.add_child(this._footer);
 
         this._entry.clutter_text.connect('text-changed', () => this._update());
         this._entry.clutter_text.connect('key-press-event', (_, event) => this._onKeyPress(event));
@@ -203,13 +210,18 @@ class AskBar extends St.Widget {
         const monitor = this._settings.get_string('open-on-monitor') === 'primary'
             ? Main.layoutManager.primaryMonitor
             : Main.layoutManager.currentMonitor;
+        const area = Main.layoutManager.getWorkAreaForMonitor(monitor.index);
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
-        const width = Math.min(this._settings.get_int('panel-width') * scale, monitor.width * 0.9);
+        const width = Math.min(this._settings.get_int('panel-width') * scale, area.width * 0.9);
+        const y = Math.round(area.y + area.height * this._settings.get_int('panel-position') / 100);
+        // Leave room for the input, both hint lines and the panel padding.
+        const chrome = (this._footer.visible ? 160 : 100) * scale;
+        const maxHeight = Math.max(0, Math.min(460 * scale, area.y + area.height - y - 24 * scale - chrome));
+        this._scroll.set_style(`max-height: ${Math.floor(maxHeight / scale)}px;`);
         this._panel.width = width;
         this._panel.set_pivot_point(0.5, 0);
         this._panel.set_position(
-            Math.round(monitor.x + (monitor.width - width) / 2),
-            Math.round(monitor.y + monitor.height * this._settings.get_int('panel-position') / 100));
+            Math.round(area.x + (area.width - width) / 2), y);
     }
 
     _update() {
@@ -226,7 +238,7 @@ class AskBar extends St.Widget {
         this._enterHintLabel.text = info.enter ?? 'Open';
 
         this._cancelSearch();
-        const generation = ++this._generation;
+        const generation = this._generation;
         this._cancellable = new Gio.Cancellable();
         let results;
         try {
@@ -254,10 +266,8 @@ class AskBar extends St.Widget {
             return;
         }
 
-        // Keep showing the previous results of the same mode while the new
-        // ones load (no flicker while typing); otherwise say we're searching.
-        if (this._resultsMode !== parsed.mode)
-            this._setResults([searchingRow(info.icon)], parsed.mode);
+        // Previous matches belong to another query and must not be activated.
+        this._setResults([searchingRow(info.icon)], parsed.mode);
         results.then(found => {
             if (generation === this._generation)
                 this._setResults(found, parsed.mode);
@@ -268,11 +278,14 @@ class AskBar extends St.Widget {
     }
 
     _cancelSearch() {
+        ++this._generation;
         this._cancellable?.cancel();
         this._cancellable = null;
     }
 
     _setResults(results, mode) {
+        if (mode !== null && results.length === 0)
+            results = [emptyRow(mode)];
         this._resultsMode = mode;
         // When results update (e.g. file matches arrive), keep a selection you
         // moved yourself; otherwise select the new best result.
@@ -282,7 +295,8 @@ class AskBar extends St.Widget {
         // Help descriptions are the instructions, including in compact mode.
         const compact = mode !== MODES.HELP && this._settings.get_boolean('compact-mode');
         this._rows = results.map((result, index) => {
-            const row = new ResultRow(result, {compact, wrapSubtitle: mode === MODES.HELP});
+            const row = new ResultRow(result, {compact: compact && !result.id.startsWith('status:'),
+                wrapSubtitle: mode === MODES.HELP || result.id.startsWith('status:')});
             row.connect('notify::hover', () => {
                 if (row.hover) {
                     this._userSelected = true;
@@ -303,6 +317,7 @@ class AskBar extends St.Widget {
         if (this._rows.length === 0) {
             this._selected = 0;
             this._actionsHint.visible = this._altHint.visible = this._fillHint.visible = false;
+            this._enterHint.visible = this._contextHints.visible = false;
             return;
         }
         this._rows[this._selected]?.setSelected(false);
@@ -313,10 +328,15 @@ class AskBar extends St.Widget {
             ensureActorVisibleInScrollView(this._scroll, row);
 
         const result = this._results[this._selected];
+        this._enterHint.visible = Boolean(result?.activate || result?.fill);
+        this._enterHintLabel.text = result?.fill ? 'Complete'
+            : result?.activateLabel ?? (this._actionsFor ? 'Run' : MODE_INFO[this._resultsMode]?.enter ?? 'Open');
+        this._escapeHintLabel.text = this._actionsFor ? 'Back' : 'Close';
         this._actionsHint.visible = Boolean(result?.actions) && !this._actionsFor;
         this._altHint.visible = Boolean(result?.altLabel);
         this._altHintLabel.text = result?.altLabel ?? '';
         this._fillHint.visible = Boolean(result?.fill);
+        this._contextHints.visible = this._actionsHint.visible || this._altHint.visible || this._fillHint.visible;
     }
 
     _activate(index, alternate = false) {
@@ -347,7 +367,13 @@ class AskBar extends St.Widget {
             this._onActivated(parse(this._entry.text), result);
         // Release the grab first so the launched app or window gets focus.
         this.close();
-        action();
+        try {
+            const pending = action();
+            if (pending instanceof Promise)
+                pending.catch(e => Main.notifyError('Could not run action', e.message));
+        } catch (e) {
+            Main.notifyError('Could not run action', e.message);
+        }
     }
 
     // ── Alt+Enter action list ─────────────────────────────────────────
@@ -358,7 +384,6 @@ class AskBar extends St.Widget {
             return;
         // Late file results must not replace the action list while it is open.
         this._cancelSearch();
-        ++this._generation;
         this._actionsFor = {result, actions: result.actions(), savedText: this._entry.text};
         this._modeIcon.icon_name = 'view-more-symbolic';
         this._chip.text = 'Actions';
@@ -458,6 +483,17 @@ function searchingRow(iconName) {
         createIcon: () => new St.Icon({icon_name: iconName, icon_size: 32, style_class: 'ab-dim'}),
         activate: null,
     };
+}
+
+function emptyRow(mode) {
+    const [title, subtitle] = mode === MODES.MATH
+        ? ['Calculate or convert', 'Try 24 * 1.15, 10 km in mi, or 72 f to c']
+        : mode === MODES.FILES
+            ? ['No files found', 'Try another name or check file search settings with /askbar']
+            : mode === 'actions'
+                ? ['No matching actions', 'Try another word, or press Esc to return to results']
+                : ['No results found', 'Try another search, or type /help for tips and examples'];
+    return {...searchingRow('system-search-symbolic'), id: 'status:empty', title, subtitle};
 }
 
 function errorRow(message) {

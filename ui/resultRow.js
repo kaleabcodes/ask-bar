@@ -19,6 +19,8 @@ class ResultRow extends St.Button {
             style_class: 'ab-row',
             track_hover: true,
             can_focus: false, // the entry keeps focus; arrows move the selection
+            reactive: Boolean(result.activate || result.fill || result.actions),
+            accessible_name: [result.title, result.subtitle, result.kind].filter(Boolean).join('. '),
             x_expand: true,
         });
 
@@ -35,10 +37,12 @@ class ResultRow extends St.Button {
             y_align: Clutter.ActorAlign.CENTER,
         });
         const title = new St.Label({text: result.title, style_class: 'ab-row-title'});
+        title.clutter_text.single_line_mode = true;
         title.clutter_text.ellipsize = Pango.EllipsizeMode.END;
         text.add_child(title);
         if (result.subtitle && !compact) {
             const subtitle = new St.Label({text: result.subtitle, style_class: 'ab-row-subtitle'});
+            subtitle.clutter_text.single_line_mode = !wrapSubtitle;
             subtitle.clutter_text.ellipsize = wrapSubtitle ? Pango.EllipsizeMode.NONE : Pango.EllipsizeMode.END;
             subtitle.clutter_text.line_wrap = wrapSubtitle;
             subtitle.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
@@ -55,7 +59,7 @@ class ResultRow extends St.Button {
     }
 
     setSelected(selected) {
-        if (selected)
+        if (selected && this.reactive)
             this.add_style_pseudo_class('selected');
         else
             this.remove_style_pseudo_class('selected');

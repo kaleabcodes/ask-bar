@@ -155,6 +155,7 @@ export class CommandsProvider {
             score,
             createIcon: () => commandIcon(command.icon),
             fill: command.fill,
+            activateLabel: 'Run',
             activate: command.run ? () => command.run() : null,
         };
     }
@@ -186,6 +187,7 @@ export class CommandsProvider {
                     this._excludeFromClipboard(preview.output);
                 copy(preview.output, command.title);
             } : null,
+            activateLabel: 'Copy',
         };
     }
 

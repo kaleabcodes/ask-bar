@@ -142,6 +142,7 @@ function result(title, detail, copyText) {
         title,
         subtitle: `${detail}  ·  Enter to copy`,
         kind: 'Calculator',
+        activateLabel: 'Copy',
         score: TOP_SCORE,
         createIcon: icon,
         activate: () => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, copyText),
