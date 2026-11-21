@@ -92,7 +92,9 @@ export class WebProvider {
         let custom = [];
         try {
             custom = JSON.parse(this._settings.get_string('custom-web-shortcuts'));
-        } catch {}
+        } catch {
+            // Invalid JSON typed in the settings: use the built-in shortcuts.
+        }
         return mergeBangs(Array.isArray(custom) ? custom : []);
     }
 

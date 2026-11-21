@@ -45,8 +45,8 @@ class AskBar extends St.Widget {
      * @param {(parsed: ReturnType<typeof parse>, result: Result) => void} [params.onActivated]
      *     called when a result is chosen (e.g. to learn from it)
      */
-    _init({settings, search, onOpen = () => {}, onActivated = () => {}}) {
-        super._init({
+    constructor({settings, search, onOpen = () => {}, onActivated = () => {}}) {
+        super({
             style_class: 'ab-backdrop',
             reactive: true,
             visible: false,
@@ -104,13 +104,15 @@ class AskBar extends St.Widget {
         this._scroll.set_child(this._list);
         this._panel.add_child(this._scroll);
 
-        const footer = new St.BoxLayout({style_class: 'ab-footer'});
+        const footer = new St.BoxLayout({style_class: 'ab-footer-primary'});
         addHint(footer, '↑↓', 'Navigate');
         this._enterHint = new St.BoxLayout();
         this._enterHintLabel = addHint(this._enterHint, 'Enter', 'Open');
         footer.add_child(this._enterHint);
         this._escapeHintLabel = addHint(footer, 'Esc', 'Close');
-        const contextHints = new St.BoxLayout({style_class: 'ab-context-hints'});
+        const contextHints = new St.BoxLayout({
+            style_class: 'ab-context-hints', x_expand: true, x_align: Clutter.ActorAlign.END,
+        });
         // Shown when the selected result has a Ctrl+Enter action.
         this._altHint = new St.BoxLayout({visible: false});
         this._altHintLabel = addHint(this._altHint, 'Ctrl+Enter', '');
@@ -120,11 +122,8 @@ class AskBar extends St.Widget {
         addHint(this._actionsHint, 'Alt+Enter', 'Actions');
         contextHints.add_child(this._actionsHint);
         // Shown when Tab completes the selected result (e.g. "!gh ").
-        this._fillHint = new St.BoxLayout({visible: false});
-        addHint(this._fillHint, 'Tab', 'Complete');
-        contextHints.add_child(this._fillHint);
         this._contextHints = contextHints;
-        this._footer = new St.BoxLayout({orientation: Clutter.Orientation.VERTICAL});
+        this._footer = new St.BoxLayout({style_class: 'ab-footer'});
         this._footer.add_child(footer);
         this._footer.add_child(contextHints);
         this._panel.add_child(this._footer);
@@ -150,7 +149,7 @@ class AskBar extends St.Widget {
 
         this._grab = Main.pushModal(this, {actionMode: Shell.ActionMode.POPUP});
 
-        this.get_parent()?.set_child_above_sibling(this, null);
+        this.get_parent().set_child_above_sibling(this, null);
         this._applyAppearance();
         this._placePanel();
         this._onOpen();
@@ -214,7 +213,7 @@ class AskBar extends St.Widget {
         const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
         const width = Math.min(this._settings.get_int('panel-width') * scale, area.width * 0.9);
         const y = Math.round(area.y + area.height * this._settings.get_int('panel-position') / 100);
-        // Leave room for the input, both hint lines and the panel padding.
+        // Leave room for the input, footer and panel padding.
         const chrome = (this._footer.visible ? 160 : 100) * scale;
         const maxHeight = Math.max(0, Math.min(460 * scale, area.y + area.height - y - 24 * scale - chrome));
         this._scroll.set_style(`max-height: ${Math.floor(maxHeight / scale)}px;`);
@@ -316,7 +315,7 @@ class AskBar extends St.Widget {
     _select(index, scroll = true) {
         if (this._rows.length === 0) {
             this._selected = 0;
-            this._actionsHint.visible = this._altHint.visible = this._fillHint.visible = false;
+            this._actionsHint.visible = this._altHint.visible = false;
             this._enterHint.visible = this._contextHints.visible = false;
             return;
         }
@@ -324,8 +323,14 @@ class AskBar extends St.Widget {
         this._selected = Math.max(0, Math.min(index, this._rows.length - 1));
         const row = this._rows[this._selected];
         row.setSelected(true);
-        if (scroll)
-            ensureActorVisibleInScrollView(this._scroll, row);
+        if (scroll) {
+            // New rows have no allocation yet. Reset the first selection
+            // directly so a previous scroll offset cannot clip its top edge.
+            if (this._selected === 0)
+                this._scroll.vadjustment.ease(0, {duration: 0});
+            else
+                ensureActorVisibleInScrollView(this._scroll, row);
+        }
 
         const result = this._results[this._selected];
         this._enterHint.visible = Boolean(result?.activate || result?.fill);
@@ -333,10 +338,13 @@ class AskBar extends St.Widget {
             : result?.activateLabel ?? (this._actionsFor ? 'Run' : MODE_INFO[this._resultsMode]?.enter ?? 'Open');
         this._escapeHintLabel.text = this._actionsFor ? 'Back' : 'Close';
         this._actionsHint.visible = Boolean(result?.actions) && !this._actionsFor;
-        this._altHint.visible = Boolean(result?.altLabel);
+        const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+        const roomy = this._panel.width >= 640 * scale;
+        // On narrow panels, keep the primary contextual hint. The action
+        // menu also contains the alternate actions shown by Ctrl+Enter.
+        this._altHint.visible = Boolean(result?.altLabel) && (!this._actionsHint.visible || roomy);
         this._altHintLabel.text = result?.altLabel ?? '';
-        this._fillHint.visible = Boolean(result?.fill);
-        this._contextHints.visible = this._actionsHint.visible || this._altHint.visible || this._fillHint.visible;
+        this._contextHints.visible = this._actionsHint.visible || this._altHint.visible;
     }
 
     _activate(index, alternate = false) {
@@ -467,9 +475,11 @@ class AskBar extends St.Widget {
 });
 
 function addHint(box, key, action) {
-    box.add_child(new St.Label({text: key, style_class: 'ab-key'}));
-    const label = new St.Label({text: action, style_class: 'ab-key-label'});
-    box.add_child(label);
+    const hint = new St.BoxLayout({style_class: 'ab-hint', y_align: Clutter.ActorAlign.CENTER});
+    hint.add_child(new St.Label({text: key, style_class: 'ab-key', y_align: Clutter.ActorAlign.CENTER}));
+    const label = new St.Label({text: action, style_class: 'ab-key-label', y_align: Clutter.ActorAlign.CENTER});
+    hint.add_child(label);
+    box.add_child(hint);
     return label;
 }
 

@@ -14,7 +14,8 @@ import {bestScore} from '../core/fuzzy.js';
 const WEIGHT = 0.9;
 const ICON_SIZE = 32;
 // Mutter 49 dropped the MaximizeFlags argument of Meta.Window.maximize().
-const MAXIMIZE_TAKES_FLAGS = Number.parseInt(Config.PACKAGE_VERSION) < 49;
+// GNOME 49 dropped the flags argument of (un)maximize and added is_maximized().
+const SHELL_48 = Number.parseInt(Config.PACKAGE_VERSION) < 49;
 
 export class WindowsProvider {
     /**
@@ -74,9 +75,9 @@ function windowActions(win, app) {
         add('minimize', 'Minimize', 'Hide the window', 'window-minimize-symbolic', () => win.minimize());
     if (win.can_maximize()) {
         if (isMaximized(win))
-            add('unmaximize', 'Restore Size', 'Unmaximize the window', 'window-restore-symbolic', () => win.unmaximize(...(MAXIMIZE_TAKES_FLAGS ? [Meta.MaximizeFlags.BOTH] : [])));
+            add('unmaximize', 'Restore Size', 'Unmaximize the window', 'window-restore-symbolic', () => setMaximized(win, false));
         else
-            add('maximize', 'Maximize', 'Fill the screen', 'window-maximize-symbolic', () => win.maximize(...(MAXIMIZE_TAKES_FLAGS ? [Meta.MaximizeFlags.BOTH] : [])));
+            add('maximize', 'Maximize', 'Fill the screen', 'window-maximize-symbolic', () => setMaximized(win, true));
     }
     if (win.is_above())
         add('unabove', 'Stop Keeping on Top', 'Let other windows cover it', 'view-pin-symbolic', () => win.unmake_above());
@@ -116,7 +117,13 @@ function windowActions(win, app) {
 }
 
 function isMaximized(win) {
-    if (typeof win.is_maximized === 'function')
-        return win.is_maximized();
-    return win.get_maximized?.() === Meta.MaximizeFlags.BOTH;
+    return SHELL_48 ? win.get_maximized() === Meta.MaximizeFlags.BOTH : win.is_maximized();
+}
+
+function setMaximized(win, maximized) {
+    const args = SHELL_48 ? [Meta.MaximizeFlags.BOTH] : [];
+    if (maximized)
+        win.maximize(...args);
+    else
+        win.unmaximize(...args);
 }

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 1.4
 
 - Calculator: percentages (`20% of 80`, `80 + 20%`), hex, binary and octal
   literals, unit conversion (`10 km in mi`, `72 f to c`, `1 gib in mb`),
@@ -19,6 +19,10 @@
 - `/rank <query>` explains the ranking of the default search.
 - Footer shows "Enter Copy" where Enter copies, and "Enter Run" in action lists.
 - CI runs tests, schema and syntax checks on every push and pull request.
+- Refreshed look: icons sit in rounded tiles, symbolic icons are sized and
+  tinted to match app icons, a larger search field, and a single-line footer
+  that drops hints that would repeat each other.
+- Code cleanup following the extensions.gnome.org best-practices guide.
 
 ## 1.3
 

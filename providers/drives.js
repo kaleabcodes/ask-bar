@@ -42,13 +42,13 @@ export class DrivesProvider {
         this.refresh();
     }
 
-    get _enabled() {
+    get _searchEnabled() {
         return this._settings.get_boolean('search-drives');
     }
 
     // Builds missing or stale lists (called when the bar opens).
     refresh() {
-        if (!this._enabled)
+        if (!this._searchEnabled)
             return;
         for (const root of this.mountedRoots()) {
             const list = this._lists.get(root);
@@ -71,7 +71,7 @@ export class DrivesProvider {
      */
     async search(query, cancellable) {
         const words = query.toLowerCase().split(/[\s/]+/).filter(Boolean);
-        if (!this._enabled || words.length === 0)
+        if (!this._searchEnabled || words.length === 0)
             return [];
         // grep for the longest word, then check the others here.
         const term = words.reduce((a, b) => (b.length > a.length ? b : a));
@@ -94,7 +94,7 @@ export class DrivesProvider {
     }
 
     async _build(root) {
-        if (!root || !this._enabled)
+        if (!root || !this._searchEnabled)
             return;
         const file = `${this._cacheDir}/${root.replace(/[^\w.-]+/g, '_')}.txt`;
         const entry = {file, builtAt: 0, building: true};
@@ -121,7 +121,7 @@ export class DrivesProvider {
      * @returns {import('./types.js').Result[]}
      */
     unmounted() {
-        if (!this._enabled)
+        if (!this._searchEnabled)
             return [];
         return this._monitor.get_volumes()
             .filter(v => !v.get_mount() && v.can_mount())

@@ -69,8 +69,8 @@ export class AppsProvider {
                         app,
                         fields: [
                             app.get_name(),
-                            info.get_generic_name?.(),
-                            info.get_keywords?.()?.join(' '),
+                            info.get_generic_name(),
+                            info.get_keywords()?.join(' '),
                             info.get_executable(),
                         ],
                     };
@@ -85,7 +85,7 @@ export class AppsProvider {
             id: `app:${app.get_id()}`,
             favorite: {id: `app:${app.get_id()}`, title: app.get_name()},
             title: app.get_name(),
-            subtitle: info?.get_description() || info?.get_generic_name?.() || '',
+            subtitle: info?.get_description() || info?.get_generic_name() || '',
             kind: app.state === Shell.AppState.RUNNING ? 'Running' : 'Application',
             score,
             createIcon: () => app.create_icon_texture(ICON_SIZE),

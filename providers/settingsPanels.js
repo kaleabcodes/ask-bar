@@ -52,7 +52,7 @@ export class SettingsPanelsProvider {
                     return {
                         info,
                         plain: name.replace(/[^\p{L}\p{N}]+/gu, ''),
-                        fields: [name, info.get_keywords?.()?.join(' '), info.get_description()],
+                        fields: [name, info.get_keywords()?.join(' '), info.get_description()],
                     };
                 });
         }

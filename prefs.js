@@ -238,8 +238,8 @@ function shortcutRow(settings) {
 // text field per property, plus Add and Remove buttons. Saves on every edit.
 const JsonListGroup = GObject.registerClass(
 class JsonListGroup extends Adw.PreferencesGroup {
-    _init({settings, key, title, description, fields, rowTitle, rowSubtitle}) {
-        super._init({title, description});
+    constructor({settings, key, title, description, fields, rowTitle, rowSubtitle}) {
+        super({title, description});
         this._settings = settings;
         this._key = key;
         this._fields = fields;

@@ -37,14 +37,15 @@ function controller(search) {
         _rows: [], _list: {destroy_all_children() {}, add_child() {}},
         _entry: {text: '@old'}, _modeIcon: {}, _chip: {}, _enterHintLabel: {},
         _enterHint: {}, _escapeHintLabel: {}, _actionsHint: {}, _altHint: {},
-        _altHintLabel: {}, _fillHint: {}, _contextHints: {},
+        _altHintLabel: {}, _contextHints: {},
         _footer: {visible: true},
         _settings: {
             get_string: () => 'pointer',
             get_boolean: () => false,
             get_int: key => ({'panel-width': 680, 'panel-position': 50})[key],
         },
-        _scroll: {set_style(style) { this.style = style; }},
+        _scroll: {set_style(style) { this.style = style; },
+            vadjustment: {value: 80, ease(value) { this.value = value; }}},
         _panel: {set_pivot_point() {}, set_position(x, y) { this.x = x; this.y = y; }},
         hide() {},
         _setResults(results, mode) { this._results = results; this._resultsMode = mode; },
@@ -125,13 +126,31 @@ test('Enter hints follow the selected result and Escape goes back from actions',
     bar._setResults([{id: 'calc:result', activate() {}, activateLabel: 'Copy'}], MODES.ALL);
     assert.equal(bar._enterHintLabel.text, 'Copy');
     assert.equal(bar._enterHint.visible, true);
+    assert.equal(bar._scroll.vadjustment.value, 0, 'a fresh first result starts at the top');
     bar._setResults([{id: 'help', fill: '/help '}], MODES.ALL);
     assert.equal(bar._enterHintLabel.text, 'Complete');
-    assert.equal(bar._contextHints.visible, true);
+    assert.equal(bar._contextHints.visible, false, 'no Tab hint repeating Enter');
     bar._actionsFor = {};
     bar._setResults([{id: 'action:open', activate() {}}], 'actions');
     assert.equal(bar._escapeHintLabel.text, 'Back');
     assert.equal(bar._enterHintLabel.text, 'Run');
+});
+
+test('narrow footers prioritize Actions; wide footers also show the alternate shortcut', () => {
+    const {bar} = controller();
+    delete bar._setResults;
+    bar._panel.width = 480;
+    bar._setResults([{id: 'file:test', activate() {}, actions() {}, altLabel: 'Show in Files'}], MODES.FILES);
+    assert.equal(bar._actionsHint.visible, true);
+    assert.equal(bar._altHint.visible, false);
+    bar._panel.width = 680;
+    bar._select(0);
+    assert.equal(bar._altHint.visible, true);
+    bar._actionsFor = {};
+    bar._panel.width = 480;
+    bar._select(0);
+    assert.equal(bar._actionsHint.visible, false);
+    assert.equal(bar._altHint.visible, true);
 });
 
 test('action failures are reported after releasing the modal grab', async () => {

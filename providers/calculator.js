@@ -120,7 +120,9 @@ export class CalculatorProvider {
                 const data = JSON.parse(cached);
                 if (data?.rates && Date.now() - data.fetched < RATES_MAX_AGE_MS)
                     return (this._rates = data);
-            } catch {}
+            } catch {
+                // A corrupt cache file is refetched below.
+            }
         }
         const json = await fetchJson(RATES_URL, cancellable);
         if (json?.result !== 'success' || !json.rates)

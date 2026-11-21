@@ -6,6 +6,7 @@ import Pango from 'gi://Pango';
 import St from 'gi://St';
 
 const COMPACT_ICON_SIZE = 22;
+const SYMBOLIC_ICON_SIZE = 22;
 
 export const ResultRow = GObject.registerClass(
 class ResultRow extends St.Button {
@@ -14,8 +15,8 @@ class ResultRow extends St.Button {
      * @param {{compact?: boolean, wrapSubtitle?: boolean}} [options]
      *     compact: smaller icon, no subtitle; wrapSubtitle: show full instructions
      */
-    _init(result, {compact = false, wrapSubtitle = false} = {}) {
-        super._init({
+    constructor(result, {compact = false, wrapSubtitle = false} = {}) {
+        super({
             style_class: 'ab-row',
             track_hover: true,
             can_focus: false, // the entry keeps focus; arrows move the selection
@@ -27,11 +28,22 @@ class ResultRow extends St.Button {
         const box = new St.BoxLayout({style_class: 'ab-row-box', x_expand: true});
         const icon = result.createIcon();
         icon.y_align = Clutter.ActorAlign.CENTER;
-        if (compact && 'icon_size' in icon)
+        if (compact && 'icon_size' in icon) {
             icon.icon_size = COMPACT_ICON_SIZE;
-        box.add_child(icon);
+        } else if (icon instanceof St.Icon && isSymbolic(icon)) {
+            // Symbolic icons at full size look heavier than app icons.
+            icon.icon_size = SYMBOLIC_ICON_SIZE;
+            icon.add_style_class_name('ab-symbolic');
+        }
+        box.add_child(new St.Bin({
+            style_class: compact ? 'ab-icon-slot ab-icon-slot-compact' : 'ab-icon-slot',
+            child: icon,
+            x_align: Clutter.ActorAlign.CENTER,
+            y_align: Clutter.ActorAlign.CENTER,
+        }));
 
         const text = new St.BoxLayout({
+            style_class: 'ab-row-text',
             orientation: Clutter.Orientation.VERTICAL,
             x_expand: true,
             y_align: Clutter.ActorAlign.CENTER,
@@ -52,6 +64,7 @@ class ResultRow extends St.Button {
 
         box.add_child(new St.Label({
             text: result.kind,
+            visible: Boolean(result.kind),
             style_class: 'ab-row-kind',
             y_align: Clutter.ActorAlign.CENTER,
         }));
@@ -65,3 +78,8 @@ class ResultRow extends St.Button {
             this.remove_style_pseudo_class('selected');
     }
 });
+
+function isSymbolic(icon) {
+    const name = icon.icon_name ?? icon.gicon?.to_string() ?? '';
+    return name.endsWith('-symbolic');
+}

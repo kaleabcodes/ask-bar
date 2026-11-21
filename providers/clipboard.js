@@ -37,7 +37,7 @@ export class ClipboardHistory {
     _onChanged(source) {
         if (!this._settings.get_boolean('clipboard-history'))
             return;
-        if (source?.get_mimetypes?.().includes(PASSWORD_HINT))
+        if (source?.get_mimetypes().includes(PASSWORD_HINT))
             return;
         St.Clipboard.get_default().get_text(St.ClipboardType.CLIPBOARD, (_, text) => {
             if (!text || !this._settings)
